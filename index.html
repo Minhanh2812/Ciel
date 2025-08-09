@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
-// Các import này gây lỗi, nên đã được loại bỏ và thay thế bằng CDN
-// import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-// import { faBook, faGraduationCap, faPen, faFeatherAlt, faHome } from '@fortawesome/free-solid-svg-icons';
+// Các import này đã được thay thế bằng link CDN để khắc phục lỗi biên dịch.
 
-// Khởi tạo app
 function App() {
   const [currentPage, setCurrentPage] = useState('home');
   const [lessons, setLessons] = useState(() => {
@@ -26,38 +23,27 @@ function App() {
       return [];
     }
   });
-  const [currentLesson, setCurrentLesson] = useState('');
 
-  // Lưu lessons vào localStorage mỗi khi có thay đổi
   useEffect(() => {
     localStorage.setItem('lessons', JSON.stringify(lessons));
   }, [lessons]);
 
-  // Lưu flashcards vào localStorage mỗi khi có thay đổi
   useEffect(() => {
     localStorage.setItem('flashcards', JSON.stringify(flashcards));
   }, [flashcards]);
 
-  // Hàm để chuyển trang
   const navigate = (page) => setCurrentPage(page);
 
-  // Hàm để thêm bài học
   const addLesson = (title, content) => {
     if (title && content) {
       setLessons([...lessons, { id: Date.now(), title, content }]);
-      setCurrentPage('library');
-    } else {
-      // Sử dụng UI modal thay cho alert
-      // alert("Vui lòng nhập tiêu đề và nội dung bài học.");
+      navigate('library');
     }
   };
 
-  // Hàm để thêm flashcard
   const addFlashcard = (word, meaning, example, imageUrl) => {
     if (word && meaning) {
       setFlashcards([...flashcards, { id: Date.now(), word, meaning, example, imageUrl }]);
-    } else {
-      // alert("Vui lòng nhập từ và nghĩa.");
     }
   };
 
@@ -93,7 +79,6 @@ function App() {
   );
 }
 
-// Component cho Background động và nhân vật hoạt hình
 const Background = () => {
   const [timeOfDay, setTimeOfDay] = useState('');
 
@@ -111,14 +96,13 @@ const Background = () => {
       }
     };
     updateTime();
-    const interval = setInterval(updateTime, 60000); // Cập nhật mỗi phút
+    const interval = setInterval(updateTime, 60000);
     return () => clearInterval(interval);
   }, []);
 
   return (
     <div className={`fixed inset-0 overflow-hidden transition-all duration-1000 ${timeOfDay}`}>
       <div className="absolute inset-0 z-0">
-        {/* Animated Background */}
         <div className="absolute inset-0 background-gradient" />
         {timeOfDay === 'night' && <NightSky />}
         <AnimatedCharacters />
@@ -136,10 +120,8 @@ const NightSky = () => (
 );
 
 const AnimatedCharacters = () => {
-  // Simple animation with CSS
   return (
     <>
-      {/* Bear character */}
       <div className="character bear">
         <div className="ear left-ear"></div>
         <div className="ear right-ear"></div>
@@ -147,14 +129,12 @@ const AnimatedCharacters = () => {
         <div className="body"></div>
       </div>
 
-      {/* Smurf character */}
       <div className="character smurf">
         <div className="hat"></div>
         <div className="head"></div>
         <div className="body"></div>
       </div>
 
-      {/* Simple human figure */}
       <div className="character human">
         <div className="head"></div>
         <div className="body"></div>
@@ -163,7 +143,6 @@ const AnimatedCharacters = () => {
   );
 };
 
-// Component thanh điều hướng
 const Navigation = ({ navigate, currentPage }) => {
   const navItems = [
     { name: 'Home', iconClass: 'fas fa-home', page: 'home' },
@@ -194,18 +173,11 @@ const Navigation = ({ navigate, currentPage }) => {
   );
 };
 
-// Component trang Home
 const Home = ({ navigate }) => {
-  const greetings = [
-    { title: 'Chào mừng bạn quay trở lại!', subtitle: 'Sẵn sàng học tập chưa?' },
-    { title: 'Home', subtitle: 'Trang giới thiệu, nút điều hướng và chào mừng' },
-  ];
-  const greeting = greetings[Math.floor(Math.random() * greetings.length)];
-
   return (
     <div className="text-center">
-      <h1 className="text-5xl font-extrabold text-gray-800 mb-2">{greeting.title}</h1>
-      <p className="text-xl text-gray-600 mb-8">{greeting.subtitle}</p>
+      <h1 className="text-5xl font-extrabold text-gray-800 mb-2">Chào mừng bạn quay trở lại!</h1>
+      <p className="text-xl text-gray-600 mb-8">Sẵn sàng học tập chưa?</p>
       <div className="space-y-4">
         <button
           onClick={() => navigate('library')}
@@ -230,7 +202,6 @@ const Home = ({ navigate }) => {
   );
 };
 
-// Component trang Thư viện
 const Library = ({ lessons }) => {
   return (
     <div>
@@ -251,12 +222,10 @@ const Library = ({ lessons }) => {
   );
 };
 
-// Component trang Bài học
 const Lessons = ({ onSaveLesson }) => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
 
-  // Tự động lưu vào localStorage mỗi khi nội dung thay đổi
   useEffect(() => {
     const savedContent = localStorage.getItem('currentLessonContent');
     if (savedContent) {
@@ -309,7 +278,6 @@ const Lessons = ({ onSaveLesson }) => {
   );
 };
 
-// Component trang Bài kiểm tra với AI
 const Test = ({ lessons }) => {
   const [userText, setUserText] = useState('');
   const [feedback, setFeedback] = useState(null);
@@ -387,7 +355,6 @@ const Test = ({ lessons }) => {
   );
 };
 
-// Component trang Flashcards với AI
 const Flashcards = ({ onSaveFlashcard }) => {
   const [word, setWord] = useState('');
   const [meaning, setMeaning] = useState('');
@@ -405,7 +372,6 @@ const Flashcards = ({ onSaveFlashcard }) => {
     setImageUrl('');
 
     try {
-      // Gọi AI để tạo câu ví dụ
       const promptExample = `Tạo một câu ví dụ bằng tiếng Việt sử dụng từ "${word}" có nghĩa là "${meaning}".`;
       const payloadExample = { contents: [{ role: "user", parts: [{ text: promptExample }] }] };
       const apiKey = "";
@@ -420,7 +386,6 @@ const Flashcards = ({ onSaveFlashcard }) => {
       const generatedExample = resultExample?.candidates?.[0]?.content?.parts?.[0]?.text;
       setExample(generatedExample || 'Không thể tạo câu ví dụ.');
 
-      // Gọi AI để tạo hình ảnh
       const promptImage = `Tạo một hình ảnh minh họa cho từ tiếng Việt "${word}" có nghĩa là "${meaning}".`;
       const payloadImage = { instances: { prompt: promptImage }, parameters: { "sampleCount": 1 } };
       const apiUrlImage = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
@@ -511,17 +476,15 @@ const Flashcards = ({ onSaveFlashcard }) => {
   );
 };
 
-// CSS styles
 const styles = `
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
 @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css');
 
 body {
   font-family: 'Inter', sans-serif;
-  overflow: hidden; /* Ngăn cuộn trang để background hoạt động tốt */
+  overflow: hidden;
 }
 
-/* Background Gradients */
 .background-gradient {
   transition: opacity 1s ease-in-out;
   height: 100vh;
@@ -543,7 +506,6 @@ body {
   background: linear-gradient(135deg, #0A0A2A, #281D52, #4B0082);
 }
 
-/* Night Sky Animations */
 .stars {
   position: absolute;
   top: 0;
@@ -597,7 +559,6 @@ body {
   100% { transform: translateY(150vh) translateX(150vh) rotate(45deg); opacity: 0; }
 }
 
-/* Character animations */
 .character {
   position: absolute;
   animation: float 15s infinite ease-in-out;
@@ -657,7 +618,6 @@ body {
 }
 `;
 
-// Render the App
 const rootElement = document.createElement('div');
 document.body.appendChild(rootElement);
 document.head.appendChild(document.createElement('style')).textContent = styles;
