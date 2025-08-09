@@ -1,0 +1,667 @@
+import React, { useState, useEffect } from 'react';
+
+// Assumed Firebase functions are defined and initialized elsewhere
+// const db = getFirestore();
+// const auth = getAuth();
+// const appId = 'default-app-id';
+
+// --- Components ---
+
+// NavLink component for navigation links
+const NavLink = ({ text, onClick, active }) => {
+  const activeClasses = active ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-200';
+  const iconClasses = active ? 'text-white' : 'text-gray-500 group-hover:text-gray-700';
+  return (
+    <button
+      onClick={onClick}
+      className={`group flex flex-col items-center p-3 rounded-lg transition-all duration-200 ${activeClasses}`}
+    >
+      <span className={`w-6 h-6 flex items-center justify-center ${iconClasses}`}>
+        {/* SVG icons for each page */}
+        {text === 'Home' && <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>}
+        {text === 'Library' && <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.484 9.493 5 8 5c-1.5 0-3 .5-3 3s1.5 3 3 3h4a3 3 0 003-3c0-1.5-.5-3-3-3m0 13V9a3 3 0 00-3-3m3 3c1.5 0 3 .5 3 3s-1.5 3-3 3h-4c-1.5 0-3-.5-3-3s1.5-3 3-3z" /></svg>}
+        {text === 'Lessons' && <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>}
+        {text === 'Test' && <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>}
+      </span>
+      <span className="text-xs mt-1 font-medium">{text}</span>
+    </button>
+  );
+};
+
+// Home Page component
+const HomePage = ({ setCurrentPage, timeOfDay }) => {
+  // Dynamic background classes for the home page card
+  const backgroundClasses = {
+    morning: 'bg-gradient-to-br from-rose-400 to-indigo-500',
+    day: 'bg-gradient-to-br from-blue-300 to-yellow-300',
+    dusk: 'bg-gradient-to-br from-orange-400 to-red-500',
+    night: 'bg-gradient-to-br from-gray-900 to-indigo-900',
+  };
+
+  const starCount = 50; // Number of stars
+  const shootingStarCount = 5; // Number of shooting stars
+  const stars = Array.from({ length: starCount }, (_, i) => (
+    <div
+      key={`star-${i}`}
+      className="absolute bg-white rounded-full animate-twinkle"
+      style={{
+        width: `${Math.random() * 2 + 1}px`, // Random star size
+        height: `${Math.random() * 2 + 1}px`,
+        top: `${Math.random() * 100}%`,
+        left: `${Math.random() * 100}%`,
+        animationDelay: `${Math.random() * 5}s`, // Random animation delay
+      }}
+    />
+  ));
+
+  const shootingStars = Array.from({ length: shootingStarCount }, (_, i) => (
+    <div
+      key={`shooting-star-${i}`}
+      className="absolute bg-white rounded-full opacity-0 animate-shooting-star"
+      style={{
+        width: `${Math.random() * 2 + 1}px`,
+        height: `${Math.random() * 2 + 1}px`,
+        top: `${Math.random() * 80}%`,
+        left: `${Math.random() * 80}%`,
+        animationDelay: `${Math.random() * 20}s`, // Shooting star appearance delay
+        animationDuration: `${Math.random() * 2 + 1}s`, // Shooting star speed
+      }}
+    />
+  ));
+
+  return (
+    <div className={`relative flex flex-col items-center justify-center text-center p-8 text-white rounded-3xl shadow-xl w-full max-w-4xl min-h-[500px] overflow-hidden transition-all duration-1000 ease-in-out ${backgroundClasses[timeOfDay]}`}>
+      {/* Night effects */}
+      {timeOfDay === 'night' && (
+        <>
+          {stars}
+          {shootingStars}
+        </>
+      )}
+
+      {/* Page content */}
+      <div className="z-10"> {/* Ensure content is on top */}
+        <h1 className="text-5xl font-extrabold leading-tight">
+          <b>Language Power-Up Station</b>
+        </h1>
+        <p className="mt-4 text-xl leading-relaxed max-w-2xl">
+          Ding ding! 🔔<br/><br/>
+          Welcome, my partner-in-crime! Our mission is to conquer languages together. Let's do this, you little smurfff! ❤️
+        </p>
+        <div className="mt-10 flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-6">
+          <button
+            onClick={() => setCurrentPage('Library')}
+            className="bg-indigo-600 text-white font-semibold py-3 px-8 rounded-full shadow-lg transition-all duration-200 hover:scale-105 hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-500 focus:ring-opacity-50"
+          >
+            Go to Library
+          </button>
+          <button
+            onClick={() => setCurrentPage('Lessons')}
+            className="bg-purple-600 text-white font-semibold py-3 px-8 rounded-full shadow-lg transition-all duration-200 hover:scale-105 hover:bg-purple-700 focus:outline-none focus:ring-4 focus:ring-purple-500 focus:ring-opacity-50"
+          >
+            Start a New Lesson
+          </button>
+          <button
+            onClick={() => setCurrentPage('Test')}
+            className="bg-pink-600 text-white font-semibold py-3 px-8 rounded-full shadow-lg transition-all duration-200 hover:scale-105 hover:bg-pink-700 focus:outline-none focus:ring-4 focus:ring-pink-500 focus:ring-opacity-50"
+          >
+            Start a Test
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Lesson Detail Page component
+const LessonDetailPage = ({ lesson, onBack }) => {
+  return (
+    <div className="flex flex-col w-full max-w-4xl p-6 bg-white rounded-3xl shadow-xl">
+      <button onClick={onBack} className="flex items-center text-indigo-600 font-semibold mb-6 self-start hover:text-indigo-800 transition-colors duration-200">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+        Back to Library
+      </button>
+      <h2 className="text-4xl font-bold text-gray-800 mb-4">{lesson.title}</h2>
+      <div className="prose max-w-none p-4 min-h-[300px] border border-gray-300 rounded-md">
+        <div dangerouslySetInnerHTML={{ __html: lesson.content }} />
+      </div>
+    </div>
+  );
+};
+
+// Library component - Displays a list of lessons
+const LibraryPage = ({ lessons, onSelectLesson }) => {
+  const [viewMode, setViewMode] = useState('grid');
+
+  return (
+    <div className="flex flex-col items-center w-full max-w-4xl p-6 bg-white rounded-3xl shadow-xl">
+      <div className="flex justify-between items-center w-full mb-6">
+        <h2 className="text-3xl font-bold text-gray-800">Your Library</h2>
+        <div className="flex space-x-2">
+          <button
+            onClick={() => setViewMode('grid')}
+            className={`p-2 rounded-md ${viewMode === 'grid' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-600'}`}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zm0 8a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zm0 8a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
+          </button>
+          <button
+            onClick={() => setViewMode('list')}
+            className={`p-2 rounded-md ${viewMode === 'list' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-600'}`}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" /></svg>
+          </button>
+        </div>
+      </div>
+      {lessons.length > 0 ? (
+        <div className={`w-full ${viewMode === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6' : 'flex flex-col space-y-4'}`}>
+          {lessons.map(lesson => (
+            <button
+              key={lesson.id}
+              onClick={() => onSelectLesson(lesson)}
+              className={`bg-gray-50 rounded-xl shadow-md p-4 transition-all duration-200 hover:shadow-lg hover:scale-105 ${viewMode === 'list' ? 'w-full' : 'aspect-square flex flex-col justify-center items-center text-center'}`}
+            >
+              <h3 className="text-lg font-semibold text-gray-800">{lesson.title}</h3>
+              {viewMode === 'list' && <p className="text-gray-500 text-sm mt-1" dangerouslySetInnerHTML={{ __html: lesson.content }} />}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center text-gray-500 p-8">
+          <p>You don't have any lessons saved yet. Go to the "Lessons" page to create one!</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Lessons component - Lesson editor
+const LessonsPage = ({ saveLesson }) => {
+  const [title, setTitle] = useState('');
+  const [content, setContent] = useState('');
+
+  const handleCommand = (command, value = null) => {
+    document.execCommand(command, false, value);
+  };
+
+  const ColorPicker = ({ id, onSelect }) => (
+    <input
+      type="color"
+      id={id}
+      onChange={(e) => handleCommand(id, e.target.value)}
+      className="w-8 h-8 rounded-md cursor-pointer"
+    />
+  );
+
+  const handleSave = () => {
+    if (title && content) {
+      saveLesson({ id: Date.now(), title, content });
+      setTitle('');
+      setContent('');
+      document.getElementById('content-editor').innerHTML = '';
+    }
+  };
+
+  return (
+    <div className="flex flex-col w-full max-w-4xl p-6 bg-white rounded-3xl shadow-xl">
+      <h2 className="text-3xl font-bold text-gray-800 mb-6">Create a New Lesson</h2>
+      <input
+        type="text"
+        placeholder="Lesson title..."
+        className="w-full text-2xl font-semibold p-3 border-b-2 border-gray-200 focus:outline-none focus:border-indigo-500 mb-6"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+      />
+      <div className="flex space-x-2 mb-4">
+        <button onClick={() => handleCommand('bold')} className="p-2 bg-gray-200 hover:bg-gray-300 rounded-md font-bold">B</button>
+        <button onClick={() => handleCommand('italic')} className="p-2 bg-gray-200 hover:bg-gray-300 rounded-md italic">I</button>
+        <ColorPicker id="foreColor" onSelect={(color) => handleCommand('foreColor', color)} />
+        <ColorPicker id="backColor" onSelect={(color) => handleCommand('backColor', color)} />
+      </div>
+      <div
+        id="content-editor"
+        contentEditable
+        className="prose max-w-none p-4 min-h-[300px] border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500"
+        onInput={(e) => setContent(e.target.innerHTML)}
+        dangerouslySetInnerHTML={{ __html: content }}
+      />
+      <button onClick={handleSave} className="mt-6 bg-green-500 text-white font-semibold py-3 px-8 rounded-full shadow-lg transition-all duration-200 hover:scale-105 hover:bg-green-600 focus:outline-none focus:ring-4 focus:ring-green-500 focus:ring-opacity-50">
+        Save Lesson
+      </button>
+    </div>
+  );
+};
+
+// Test component - Creates and takes tests
+const TestPage = ({ lessons }) => {
+  const [testState, setTestState] = useState('config'); // 'config', 'loading', 'questions', 'results'
+  const [config, setConfig] = useState({ topic: '', level: 'B1', questions: 5, time: 10, lessonId: '' });
+  const [testData, setTestData] = useState(null);
+  const [userAnswers, setUserAnswers] = useState({});
+  const [results, setResults] = useState(null);
+  const [error, setError] = useState('');
+  const [timer, setTimer] = useState(0);
+
+  useEffect(() => {
+    if (testState === 'questions' && timer > 0) {
+      const countdown = setInterval(() => {
+        setTimer(prevTime => prevTime - 1);
+      }, 1000);
+      return () => clearInterval(countdown);
+    } else if (timer === 0 && testState === 'questions') {
+      handleSubmitTest();
+    }
+  }, [testState, timer]);
+
+  const handleGenerateTest = async () => {
+    setError('');
+    setTestState('loading');
+    let prompt;
+    const selectedLesson = lessons.find(l => l.id === parseInt(config.lessonId));
+
+    if (selectedLesson) {
+      prompt = `Generate a ${config.level} level test on the following lesson content with ${config.questions} multiple-choice questions. For each question, provide the question text, four options, and the correct answer text. The correct answer must be one of the options. Respond with a JSON object.
+      
+      Lesson Title: ${selectedLesson.title}
+      Lesson Content: ${selectedLesson.content}
+      `;
+    } else {
+      prompt = `Generate a ${config.level} level test on ${config.topic} with ${config.questions} multiple-choice questions. For each question, provide the question text, four options, and the correct answer text. The correct answer must be one of the options. Respond with a JSON object.`;
+    }
+
+    const jsonSchema = {
+      "type": "OBJECT",
+      "properties": {
+        "title": { "type": "STRING" },
+        "level": { "type": "STRING" },
+        "topic": { "type": "STRING" },
+        "questions": {
+          "type": "ARRAY",
+          "items": {
+            "type": "OBJECT",
+            "properties": {
+              "questionText": { "type": "STRING" },
+              "options": {
+                "type": "ARRAY",
+                "items": { "type": "STRING" }
+              },
+              "correctAnswer": { "type": "STRING" }
+            }
+          }
+        }
+      },
+      "propertyOrdering": ["title", "level", "topic", "questions"]
+    };
+
+    let retries = 3;
+    while (retries > 0) {
+      try {
+        const payload = {
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: jsonSchema
+          }
+        };
+        const apiKey = "";
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const result = await response.json();
+        const jsonString = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (jsonString) {
+          const parsedJson = JSON.parse(jsonString);
+          setTestData(parsedJson);
+          setUserAnswers({});
+          setTimer(config.time * 60);
+          setTestState('questions');
+          return;
+        }
+      } catch (e) {
+        console.error('Error calling API:', e);
+        retries--;
+        await new Promise(res => setTimeout(res, 1000 * Math.pow(2, 3 - retries))); // Exponential backoff
+      }
+    }
+    setError('Could not create test. Please try again.');
+    setTestState('config');
+  };
+
+  const handleSelectAnswer = (questionIndex, answer) => {
+    setUserAnswers(prev => ({ ...prev, [questionIndex]: answer }));
+  };
+
+  const handleSubmitTest = async () => {
+    setTestState('loading');
+    const userAnswersText = Object.keys(userAnswers).map(index => {
+      const question = testData.questions[index];
+      return `Question: ${question.questionText}\nUser's Answer: ${userAnswers[index]}`;
+    }).join('\n\n');
+
+    const correctAnswersText = testData.questions.map(q => q.correctAnswer).join(', ');
+
+    const gradePrompt = `The user took a test. The topic was "${testData.topic}" at level "${testData.level}". Here are the questions and the user's answers:\n\n${userAnswersText}\n\nThe correct answers were: ${correctAnswersText}. Please provide a score out of ${testData.questions.length} and a brief feedback. Respond with a JSON object.`;
+    const gradingSchema = {
+      "type": "OBJECT",
+      "properties": {
+        "score": { "type": "NUMBER" },
+        "totalQuestions": { "type": "NUMBER" },
+        "feedback": { "type": "STRING" }
+      },
+      "propertyOrdering": ["score", "totalQuestions", "feedback"]
+    };
+
+    let retries = 3;
+    while (retries > 0) {
+      try {
+        const payload = {
+          contents: [{ parts: [{ text: gradePrompt }] }],
+          generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: gradingSchema
+          }
+        };
+        const apiKey = "";
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const result = await response.json();
+        const jsonString = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (jsonString) {
+          const parsedJson = JSON.parse(jsonString);
+          setResults(parsedJson);
+          setTestState('results');
+          return;
+        }
+      } catch (e) {
+        console.error('Error grading test:', e);
+        retries--;
+        await new Promise(res => setTimeout(res, 1000 * Math.pow(2, 3 - retries))); // Exponential backoff
+      }
+    }
+    setError('Could not grade test. Please try again.');
+    setTestState('questions'); // Return to the questions page
+  };
+
+  const formatTime = (seconds) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
+  };
+
+  const handleRetry = () => {
+    setTestState('config');
+    setTestData(null);
+    setResults(null);
+    setUserAnswers({});
+  };
+
+  return (
+    <div className="flex flex-col w-full max-w-4xl p-6 bg-white rounded-3xl shadow-xl">
+      <h2 className="text-3xl font-bold text-gray-800 mb-6">Create a Test</h2>
+      {testState === 'config' && (
+        <div className="space-y-6">
+          {error && <p className="text-red-500 font-medium">{error}</p>}
+          <div className="flex flex-col space-y-2">
+            <label className="text-gray-700 font-semibold">Select Test Type</label>
+            <div className="flex space-x-4">
+              <button
+                onClick={() => setConfig({ ...config, lessonId: '' })}
+                className={`flex-1 p-3 rounded-md transition-colors duration-200 font-semibold ${!config.lessonId ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-600'}`}
+              >
+                General Topic
+              </button>
+              <button
+                onClick={() => setConfig({ ...config, topic: '' })}
+                className={`flex-1 p-3 rounded-md transition-colors duration-200 font-semibold ${config.lessonId ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-600'}`}
+              >
+                From a Saved Lesson
+              </button>
+            </div>
+          </div>
+          {config.lessonId ? (
+            <div className="flex flex-col space-y-2">
+              <label className="text-gray-700 font-semibold">Select a Lesson</label>
+              <select
+                className="p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                value={config.lessonId}
+                onChange={(e) => setConfig({ ...config, lessonId: e.target.value })}
+              >
+                <option value="">-- Choose a lesson --</option>
+                {lessons.map(lesson => (
+                  <option key={lesson.id} value={lesson.id}>
+                    {lesson.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <div className="flex flex-col space-y-2">
+              <label className="text-gray-700 font-semibold">Topic</label>
+              <input
+                type="text"
+                className="p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="e.g., verbs, vocabulary, grammar..."
+                value={config.topic}
+                onChange={(e) => setConfig({ ...config, topic: e.target.value })}
+              />
+            </div>
+          )}
+          <div className="flex space-x-4">
+            <div className="flex-1 flex flex-col space-y-2">
+              <label className="text-gray-700 font-semibold">Level</label>
+              <select
+                className="p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                value={config.level}
+                onChange={(e) => setConfig({ ...config, level: e.target.value })}
+              >
+                <option value="B1">B1</option>
+                <option value="B2">B2</option>
+                <option value="C1">C1</option>
+                <option value="C2">C2</option>
+              </select>
+            </div>
+            <div className="flex-1 flex flex-col space-y-2">
+              <label className="text-gray-700 font-semibold">Number of Questions</label>
+              <input
+                type="number"
+                min="1" max="20"
+                className="p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                value={config.questions}
+                onChange={(e) => setConfig({ ...config, questions: parseInt(e.target.value) })}
+              />
+            </div>
+            <div className="flex-1 flex flex-col space-y-2">
+              <label className="text-gray-700 font-semibold">Time (minutes)</label>
+              <input
+                type="number"
+                min="1" max="60"
+                className="p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                value={config.time}
+                onChange={(e) => setConfig({ ...config, time: parseInt(e.target.value) })}
+              />
+            </div>
+          </div>
+          <button
+            onClick={handleGenerateTest}
+            disabled={!config.topic && !config.lessonId}
+            className={`w-full font-semibold py-3 px-8 rounded-full shadow-lg transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-4 focus:ring-opacity-50
+            ${(!config.topic && !config.lessonId) ? 'bg-gray-400 cursor-not-allowed' : 'bg-pink-600 text-white hover:bg-pink-700 focus:ring-pink-500'}`}
+          >
+            Create Test
+          </button>
+        </div>
+      )}
+      {testState === 'loading' && (
+        <div className="flex flex-col items-center justify-center p-12">
+          <svg className="animate-spin h-10 w-10 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <p className="mt-4 text-gray-600 font-medium">AI is creating a test for you...</p>
+        </div>
+      )}
+      {testState === 'questions' && testData && (
+        <div className="flex flex-col space-y-6">
+          <div className="flex justify-between items-center pb-4 border-b">
+            <h3 className="text-xl font-bold">{testData.title}</h3>
+            <div className="flex items-center text-lg font-mono text-gray-700">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              {formatTime(timer)}
+            </div>
+          </div>
+          {testData.questions.map((question, index) => (
+            <div key={index} className="space-y-4">
+              <p className="font-semibold text-lg">{index + 1}. {question.questionText}</p>
+              <div className="flex flex-col space-y-2">
+                {question.options.map((option, optIndex) => (
+                  <button
+                    key={optIndex}
+                    onClick={() => handleSelectAnswer(index, option)}
+                    className={`text-left p-3 rounded-md transition-colors duration-150 ${userAnswers[index] === option ? 'bg-indigo-200 border-indigo-600' : 'bg-gray-100 hover:bg-gray-200 border border-gray-300'}`}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+          <button
+            onClick={handleSubmitTest}
+            className="w-full bg-indigo-600 text-white font-semibold py-3 px-8 rounded-full shadow-lg transition-all duration-200 hover:scale-105 hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-500 focus:ring-opacity-50"
+          >
+            Submit
+          </button>
+        </div>
+      )}
+      {testState === 'results' && results && (
+        <div className="flex flex-col items-center text-center p-8">
+          <h3 className="text-4xl font-extrabold text-gray-900">Your Results!</h3>
+          <p className="mt-4 text-7xl font-bold text-indigo-600">
+            {results.score} / {results.totalQuestions}
+          </p>
+          <p className="mt-4 text-xl text-gray-600 leading-relaxed max-w-2xl">
+            {results.feedback}
+          </p>
+          <button
+            onClick={handleRetry}
+            className="mt-8 bg-indigo-600 text-white font-semibold py-3 px-8 rounded-full shadow-lg transition-all duration-200 hover:scale-105 hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-500 focus:ring-opacity-50"
+          >
+            Try Another Test
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+
+// Main App component
+export default function App() {
+  const [currentPage, setCurrentPage] = useState('Home');
+  const [timeOfDay, setTimeOfDay] = useState('night'); // Initial value
+  const [lessons, setLessons] = useState([
+    { id: 1, title: 'Lesson 1: Introduction to React', content: '<p>React is a JavaScript library for building user interfaces. It is maintained by Meta and a community of individual developers and companies. React can be used as a base in the development of single-page or mobile applications.</p><p>Key concepts include: <ul><li>Components</li><li>State</li><li>Props</li><li>Hooks</li></ul></p>' },
+    { id: 2, title: 'Lesson 2: Verb Conjugation', content: '<p>Verb conjugation is the modification of a verb to show different grammatical categories such as tense, voice, person, number, gender, and mood. For example, in English, the verb "to be" can be conjugated into "am", "is", "are", "was", "were", "been", and "being".</p>' },
+  ]);
+  const [selectedLesson, setSelectedLesson] = useState(null);
+
+  // Faded background classes for the entire app, changing with time
+  const appBackgroundClasses = {
+    morning: 'bg-gradient-to-br from-rose-50 to-blue-50', // Dawn: orange-red to blue
+    day: 'bg-gradient-to-br from-blue-50 to-yellow-50', // Day: blue to yellow
+    dusk: 'bg-gradient-to-br from-orange-50 to-red-50', // Dusk: orange-yellow-red
+    night: 'bg-gradient-to-br from-indigo-100 to-purple-100', // Night: dark blue to purple
+  };
+
+  // Function to determine the time of day
+  const updateTimeOfDay = () => {
+    const now = new Date();
+    const hour = now.getHours();
+    if (hour >= 6 && hour < 9) { // 6am - 9am
+      setTimeOfDay('morning');
+    } else if (hour >= 9 && hour < 17) { // 9am - 5pm
+      setTimeOfDay('day');
+    } else if (hour >= 17 && hour < 19) { // 5pm - 7pm
+      setTimeOfDay('dusk');
+    } else { // 7pm - 6am
+      setTimeOfDay('night');
+    }
+  };
+
+  useEffect(() => {
+    // Update immediately on first render
+    updateTimeOfDay();
+    // Update every minute
+    const interval = setInterval(updateTimeOfDay, 60000);
+    // Cleanup interval on component unmount
+    return () => clearInterval(interval);
+  }, []);
+
+  const saveLesson = (newLesson) => {
+    setLessons(prevLessons => [...prevLessons, newLesson]);
+  };
+
+  const renderPage = () => {
+    if (selectedLesson) {
+      return <LessonDetailPage lesson={selectedLesson} onBack={() => setSelectedLesson(null)} />;
+    }
+
+    switch (currentPage) {
+      case 'Home':
+        return <HomePage setCurrentPage={setCurrentPage} timeOfDay={timeOfDay} />;
+      case 'Library':
+        return <LibraryPage lessons={lessons} onSelectLesson={setSelectedLesson} />;
+      case 'Lessons':
+        return <LessonsPage saveLesson={saveLesson} />;
+      case 'Test':
+        return <TestPage lessons={lessons} />;
+      default:
+        return <HomePage setCurrentPage={setCurrentPage} timeOfDay={timeOfDay} />;
+    }
+  };
+
+  return (
+    <div className={`flex flex-col items-center min-h-screen p-8 transition-colors duration-1000 ${appBackgroundClasses[timeOfDay]} text-gray-900`}>
+      {/* CSS for twinkling and shooting star effects */}
+      <style>{`
+        @keyframes twinkle {
+          0%, 100% { opacity: 0; transform: scale(0.5); }
+          50% { opacity: 1; transform: scale(1); }
+        }
+        @keyframes shooting-star {
+          0% {
+            opacity: 0;
+            transform: rotate(225deg) translateX(0);
+          }
+          10% {
+            opacity: 1;
+          }
+          100% {
+            opacity: 0;
+            transform: rotate(225deg) translateX(200px);
+          }
+        }
+        .animate-twinkle {
+          animation: twinkle 5s infinite;
+        }
+        .animate-shooting-star {
+          animation: shooting-star 10s infinite;
+        }
+      `}</style>
+      <div className="flex justify-center space-x-6 p-4 bg-white rounded-xl shadow-lg mb-12">
+        <NavLink text="Home" onClick={() => { setCurrentPage('Home'); setSelectedLesson(null); }} active={currentPage === 'Home'} />
+        <NavLink text="Library" onClick={() => { setCurrentPage('Library'); setSelectedLesson(null); }} active={currentPage === 'Library' && !selectedLesson} />
+        <NavLink text="Lessons" onClick={() => { setCurrentPage('Lessons'); setSelectedLesson(null); }} active={currentPage === 'Lessons'} />
+        <NavLink text="Test" onClick={() => { setCurrentPage('Test'); setSelectedLesson(null); }} active={currentPage === 'Test'} />
+      </div>
+
+      {renderPage()}
+    </div>
+  );
+}
