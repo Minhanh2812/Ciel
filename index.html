@@ -1,623 +1,656 @@
-import React, { useState, useEffect } from 'react';
-import { createRoot } from 'react-dom/client';
-
-function App() {
-  const [currentPage, setCurrentPage] = useState('home');
-  const [lessons, setLessons] = useState(() => {
-    try {
-      const storedLessons = localStorage.getItem('lessons');
-      return storedLessons ? JSON.parse(storedLessons) : [];
-    } catch (e) {
-      console.error("Failed to load lessons from localStorage", e);
-      return [];
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Learning Web App</title>
+  <!-- Load React and ReactDOM from a CDN -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <!-- Load Tailwind CSS from CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Load Font Awesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+    
+    body {
+      font-family: 'Inter', sans-serif;
+      overflow: hidden;
     }
-  });
-
-  const [flashcards, setFlashcards] = useState(() => {
-    try {
-      const storedFlashcards = localStorage.getItem('flashcards');
-      return storedFlashcards ? JSON.parse(storedFlashcards) : [];
-    } catch (e) {
-      console.error("Failed to load flashcards from localStorage", e);
-      return [];
+    
+    .background-gradient {
+      transition: opacity 1s ease-in-out;
+      height: 100vh;
     }
-  });
-
-  useEffect(() => {
-    localStorage.setItem('lessons', JSON.stringify(lessons));
-  }, [lessons]);
-
-  useEffect(() => {
-    localStorage.setItem('flashcards', JSON.stringify(flashcards));
-  }, [flashcards]);
-
-  const navigate = (page) => setCurrentPage(page);
-
-  const addLesson = (title, content) => {
-    if (title && content) {
-      setLessons([...lessons, { id: Date.now(), title, content }]);
-      navigate('library');
+    
+    .sunrise .background-gradient {
+      background: linear-gradient(135deg, #FF6B6B, #4ECDC4, #F7FFF7);
     }
-  };
-
-  const addFlashcard = (word, meaning, example, imageUrl) => {
-    if (word && meaning) {
-      setFlashcards([...flashcards, { id: Date.now(), word, meaning, example, imageUrl }]);
+    
+    .day .background-gradient {
+      background: linear-gradient(135deg, #87CEEB, #F0F8FF, #FFD700);
     }
-  };
-
-  const renderPage = () => {
-    switch (currentPage) {
-      case 'home':
-        return <Home navigate={navigate} />;
-      case 'library':
-        return <Library lessons={lessons} navigate={navigate} />;
-      case 'lessons':
-        return <Lessons onSaveLesson={addLesson} />;
-      case 'test':
-        return <Test lessons={lessons} />;
-      case 'flashcards':
-        return <Flashcards onSaveFlashcard={addFlashcard} />;
-      default:
-        return <Home navigate={navigate} />;
+    
+    .sunset .background-gradient {
+      background: linear-gradient(135deg, #FF6347, #FF8C00, #FFD700);
     }
-  };
-
-  return (
-    <div className="relative min-h-screen">
-      <Background />
-      <div className="absolute inset-0 flex flex-col z-10 p-4">
-        <Navigation navigate={navigate} currentPage={currentPage} />
-        <div className="flex-grow flex items-center justify-center p-4">
-          <div className="w-full max-w-4xl bg-white bg-opacity-90 backdrop-filter backdrop-blur-lg rounded-3xl shadow-2xl p-8 transition-all duration-500 transform">
-            {renderPage()}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-const Background = () => {
-  const [timeOfDay, setTimeOfDay] = useState('');
-
-  useEffect(() => {
-    const updateTime = () => {
-      const hour = new Date().getHours();
-      if (hour >= 5 && hour < 9) {
-        setTimeOfDay('sunrise');
-      } else if (hour >= 9 && hour < 17) {
-        setTimeOfDay('day');
-      } else if (hour >= 17 && hour < 20) {
-        setTimeOfDay('sunset');
-      } else {
-        setTimeOfDay('night');
-      }
-    };
-    updateTime();
-    const interval = setInterval(updateTime, 60000);
-    return () => clearInterval(interval);
-  }, []);
-
-  return (
-    <div className={`fixed inset-0 overflow-hidden transition-all duration-1000 ${timeOfDay}`}>
-      <div className="absolute inset-0 z-0">
-        <div className="absolute inset-0 background-gradient" />
-        {timeOfDay === 'night' && <NightSky />}
-        <AnimatedCharacters />
-      </div>
-    </div>
-  );
-};
-
-const NightSky = () => (
-  <div className="absolute inset-0">
-    <div className="stars"></div>
-    <div className="shooting-star"></div>
-    <div className="shooting-star-2"></div>
-  </div>
-);
-
-const AnimatedCharacters = () => {
-  return (
-    <>
-      <div className="character bear">
-        <div className="ear left-ear"></div>
-        <div className="ear right-ear"></div>
-        <div className="head"></div>
-        <div className="body"></div>
-      </div>
-
-      <div className="character smurf">
-        <div className="hat"></div>
-        <div className="head"></div>
-        <div className="body"></div>
-      </div>
-
-      <div className="character human">
-        <div className="head"></div>
-        <div className="body"></div>
-      </div>
-    </>
-  );
-};
-
-const Navigation = ({ navigate, currentPage }) => {
-  const navItems = [
-    { name: 'Home', iconClass: 'fas fa-home', page: 'home' },
-    { name: 'Library', iconClass: 'fas fa-book', page: 'library' },
-    { name: 'Lessons', iconClass: 'fas fa-pen', page: 'lessons' },
-    { name: 'Test', iconClass: 'fas fa-graduation-cap', page: 'test' },
-    { name: 'Flashcards', iconClass: 'fas fa-feather-alt', page: 'flashcards' },
-  ];
-
-  return (
-    <nav className="flex justify-center mb-6">
-      <ul className="flex space-x-2 bg-white bg-opacity-70 backdrop-filter backdrop-blur-lg rounded-full p-2 shadow-lg">
-        {navItems.map((item) => (
-          <li key={item.name}>
-            <button
-              onClick={() => navigate(item.page)}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-full transition-all duration-300 font-semibold
-                ${currentPage === item.page ? 'bg-blue-600 text-white shadow-md' : 'text-gray-700 hover:bg-gray-200'}
-              `}
-            >
-              <i className={item.iconClass}></i>
-              <span className="hidden sm:inline">{item.name}</span>
-            </button>
-          </li>
-        ))}
-      </ul>
-    </nav>
-  );
-};
-
-const Home = ({ navigate }) => {
-  return (
-    <div className="text-center">
-      <h1 className="text-5xl font-extrabold text-gray-800 mb-2">Welcome Back!</h1>
-      <p className="text-xl text-gray-600 mb-8">Ready to learn?</p>
-      <div className="space-y-4">
-        <button
-          onClick={() => navigate('library')}
-          className="w-full md:w-2/3 lg:w-1/2 block mx-auto px-6 py-4 bg-purple-600 text-white text-xl font-bold rounded-xl shadow-md hover:bg-purple-700 transition duration-300 transform hover:scale-105"
-        >
-          Go to Library
-        </button>
-        <button
-          onClick={() => navigate('lessons')}
-          className="w-full md:w-2/3 lg:w-1/2 block mx-auto px-6 py-4 bg-green-600 text-white text-xl font-bold rounded-xl shadow-md hover:bg-green-700 transition duration-300 transform hover:scale-105"
-        >
-          Start a New Lesson
-        </button>
-        <button
-          onClick={() => navigate('test')}
-          className="w-full md:w-2/3 lg:w-1/2 block mx-auto px-6 py-4 bg-indigo-600 text-white text-xl font-bold rounded-xl shadow-md hover:bg-indigo-700 transition duration-300 transform hover:scale-105"
-        >
-          Start a Test
-        </button>
-      </div>
-    </div>
-  );
-};
-
-const Library = ({ lessons }) => {
-  return (
-    <div>
-      <h2 className="text-4xl font-bold text-gray-800 mb-6 text-center">Your Library</h2>
-      {lessons.length === 0 ? (
-        <p className="text-center text-gray-500 text-lg">You don't have any lessons yet. Start a new one!</p>
-      ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {lessons.map((lesson) => (
-            <div key={lesson.id} className="bg-gray-50 p-6 rounded-xl shadow-md border border-gray-200 hover:shadow-lg transition-all duration-300">
-              <h3 className="text-xl font-bold text-blue-600 mb-2">{lesson.title}</h3>
-              <p className="text-gray-700 line-clamp-3">{lesson.content}</p>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
-
-const Lessons = ({ onSaveLesson }) => {
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-
-  useEffect(() => {
-    const savedContent = localStorage.getItem('currentLessonContent');
-    if (savedContent) {
-      try {
-        const { savedTitle, savedContentText } = JSON.parse(savedContent);
-        setTitle(savedTitle);
-        setContent(savedContentText);
-      } catch (e) {
-        console.error("Failed to parse saved lesson content", e);
-      }
+    
+    .night .background-gradient {
+      background: linear-gradient(135deg, #0A0A2A, #281D52, #4B0082);
     }
-  }, []);
+    
+    .stars {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image:
+        radial-gradient(2px 2px at 20px 30px, #eee, rgba(0,0,0,0)),
+        radial-gradient(2px 2px at 40px 70px, #eee, rgba(0,0,0,0)),
+        radial-gradient(2px 2px at 50px 160px, #eee, rgba(0,0,0,0)),
+        radial-gradient(2px 2px at 90px 40px, #eee, rgba(0,0,0,0)),
+        radial-gradient(2px 2px at 120px 80px, #eee, rgba(0,0,0,0)),
+        radial-gradient(2px 2px at 150px 10px, #eee, rgba(0,0,0,0)),
+        radial-gradient(2px 2px at 170px 150px, #eee, rgba(0,0,0,0));
+      background-repeat: repeat;
+      background-size: 200px 200px;
+      animation: twinkle 10s infinite;
+    }
+    
+    .shooting-star {
+      position: absolute;
+      top: -100px;
+      left: 50%;
+      width: 2px;
+      height: 100px;
+      background: linear-gradient(to bottom, rgba(255,255,255,0), #fff);
+      transform: rotate(45deg);
+      animation: shoot 5s infinite linear;
+      animation-delay: 2s;
+    }
+    
+    .shooting-star-2 {
+      position: absolute;
+      top: -200px;
+      left: 20%;
+      width: 2px;
+      height: 100px;
+      background: linear-gradient(to bottom, rgba(255,255,255,0), #fff);
+      transform: rotate(45deg);
+      animation: shoot 7s infinite linear;
+      animation-delay: 5s;
+    }
+    
+    @keyframes twinkle {
+      0%, 100% { opacity: 0.8; }
+      50% { opacity: 0.5; }
+    }
+    
+    @keyframes shoot {
+      0% { transform: translateY(0) translateX(0) rotate(45deg); opacity: 1; }
+      100% { transform: translateY(150vh) translateX(150vh) rotate(45deg); opacity: 0; }
+    }
+    
+    .character {
+      position: absolute;
+      animation: float 15s infinite ease-in-out;
+      filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.2));
+    }
+    
+    .bear {
+      width: 60px;
+      height: 60px;
+      bottom: 10%;
+      left: 5%;
+      animation: moveBear 20s infinite linear;
+    }
+    .bear .head { background-color: #A0522D; border-radius: 50%; width: 40px; height: 40px; position: absolute; top: 10px; left: 10px; }
+    .bear .ear { background-color: #A0522D; border-radius: 50%; width: 20px; height: 20px; position: absolute; }
+    .bear .left-ear { top: 0; left: 0; }
+    .bear .right-ear { top: 0; right: 0; }
+    
+    .smurf {
+      width: 50px;
+      height: 50px;
+      top: 20%;
+      right: 15%;
+      animation: moveSmurf 18s infinite linear;
+    }
+    .smurf .head { background-color: #00BFFF; border-radius: 50%; width: 30px; height: 30px; position: absolute; top: 20px; left: 10px; }
+    .smurf .hat { background-color: white; border-radius: 50%; width: 40px; height: 25px; position: absolute; top: 0; left: 5px; }
+    
+    .human {
+      width: 50px;
+      height: 70px;
+      bottom: 50%;
+      left: 30%;
+      animation: moveHuman 22s infinite linear;
+    }
+    .human .head { background-color: #FFDAB9; border-radius: 50%; width: 30px; height: 30px; position: absolute; top: 0; left: 10px; }
+    .human .body { background-color: #6A5ACD; border-radius: 50% 50% 10px 10px; width: 40px; height: 40px; position: absolute; top: 30px; left: 5px; }
+    
+    @keyframes moveBear {
+      0% { transform: translate(0, 0); }
+      25% { transform: translate(100px, 50px); }
+      50% { transform: translate(200px, 0); }
+      75% { transform: translate(100px, -50px); }
+      100% { transform: translate(0, 0); }
+    }
+    
+    @keyframes moveSmurf {
+      0% { transform: translate(0, 0); }
+      50% { transform: translate(-100px, 100px); }
+      100% { transform: translate(0, 0); }
+    }
+    
+    @keyframes moveHuman {
+      0% { transform: translate(0, 0); }
+      50% { transform: translate(0, -100px); }
+      100% { transform: translate(0, 0); }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
 
-  useEffect(() => {
-    localStorage.setItem('currentLessonContent', JSON.stringify({ savedTitle: title, savedContentText: content }));
-  }, [title, content]);
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+    const { createRoot } = ReactDOM;
 
-  const handleSave = () => {
-    onSaveLesson(title, content);
-    setTitle('');
-    setContent('');
-  };
-
-  return (
-    <div className="flex flex-col h-full">
-      <h2 className="text-4xl font-bold text-gray-800 mb-6 text-center">Create a New Lesson</h2>
-      <input
-        type="text"
-        placeholder="Lesson Title..."
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        className="w-full p-4 mb-4 text-xl rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-      />
-      <textarea
-        placeholder="Write your lesson here..."
-        value={content}
-        onChange={(e) => setContent(e.target.value)}
-        className="flex-grow w-full p-4 text-lg rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        rows="10"
-      />
-      <div className="mt-6 text-right">
-        <button
-          onClick={handleSave}
-          className="px-6 py-3 bg-blue-600 text-white font-bold rounded-xl shadow-md hover:bg-blue-700 transition duration-300"
-        >
-          Save Lesson
-        </button>
-      </div>
-    </div>
-  );
-};
-
-const Test = ({ lessons }) => {
-  const [userText, setUserText] = useState('');
-  const [feedback, setFeedback] = useState(null);
-  const [loading, setLoading] = useState(false);
-
-  const getAIFeedback = async () => {
-    if (!userText.trim()) return;
-
-    setLoading(true);
-    setFeedback(null);
-    try {
-      const prompt = `Analyze the following text and provide detailed feedback. Correct grammar and spelling, suggest better vocabulary, and comment on the sentence structure. Respond in English.
-      Text: "${userText}"
-      `;
-
-      const chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
-      const payload = { contents: chatHistory };
-      const apiKey = "";
-      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+    // The main App component that handles navigation and state.
+    function App() {
+      const [currentPage, setCurrentPage] = useState('home');
+      const [lessons, setLessons] = useState(() => {
+        try {
+          const storedLessons = localStorage.getItem('lessons');
+          return storedLessons ? JSON.parse(storedLessons) : [];
+        } catch (e) {
+          console.error("Failed to load lessons from localStorage", e);
+          return [];
+        }
       });
-
-      if (!response.ok) {
-        throw new Error(`API call failed with status: ${response.status}`);
-      }
-
-      const result = await response.json();
-
-      if (result.candidates && result.candidates.length > 0 && result.candidates[0].content) {
-        setFeedback(result.candidates[0].content.parts[0].text);
-      } else {
-        setFeedback("Unable to get AI feedback. Please try again.");
-      }
-
-    } catch (error) {
-      console.error("Error calling API:", error);
-      setFeedback("An error occurred while getting AI feedback. Please check your connection.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div>
-      <h2 className="text-4xl font-bold text-gray-800 mb-6 text-center">AI-Powered Test</h2>
-      <p className="text-lg text-gray-600 mb-4 text-center">Paste your writing here to get AI feedback.</p>
-      <textarea
-        value={userText}
-        onChange={(e) => setUserText(e.target.value)}
-        className="w-full p-4 text-lg rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        rows="10"
-        placeholder="Paste your writing or lesson here..."
-      />
-      <div className="mt-6 text-right">
-        <button
-          onClick={getAIFeedback}
-          className="px-6 py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-md hover:bg-indigo-700 transition duration-300 disabled:opacity-50"
-          disabled={loading || !userText.trim()}
-        >
-          {loading ? 'Analyzing...' : 'Get Feedback'}
-        </button>
-      </div>
-
-      {feedback && (
-        <div className="mt-8 bg-gray-50 p-6 rounded-xl shadow-inner border border-gray-200">
-          <h3 className="text-2xl font-bold text-gray-800 mb-4">AI Feedback:</h3>
-          <p className="whitespace-pre-wrap text-gray-700">{feedback}</p>
-        </div>
-      )}
-    </div>
-  );
-};
-
-const Flashcards = ({ onSaveFlashcard }) => {
-  const [word, setWord] = useState('');
-  const [meaning, setMeaning] = useState('');
-  const [example, setExample] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const generateWithAI = async () => {
-    if (!word || !meaning) {
-      // alert("Please enter a word and meaning first.");
-      return;
-    }
-    setLoading(true);
-    setExample('');
-    setImageUrl('');
-
-    try {
-      const promptExample = `Create an example sentence in English using the word "${word}" which means "${meaning}".`;
-      const payloadExample = { contents: [{ role: "user", parts: [{ text: promptExample }] }] };
-      const apiKey = "";
-      const apiUrlExample = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-
-      const responseExample = await fetch(apiUrlExample, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payloadExample)
+      const [flashcards, setFlashcards] = useState(() => {
+        try {
+          const storedFlashcards = localStorage.getItem('flashcards');
+          return storedFlashcards ? JSON.parse(storedFlashcards) : [];
+        } catch (e) {
+          console.error("Failed to load flashcards from localStorage", e);
+          return [];
+        }
       });
-      const resultExample = await responseExample.json();
-      const generatedExample = resultExample?.candidates?.[0]?.content?.parts?.[0]?.text;
-      setExample(generatedExample || 'Unable to generate an example sentence.');
-
-      const promptImage = `Create an illustrative image for the word "${word}" which means "${meaning}".`;
-      const payloadImage = { instances: { prompt: promptImage }, parameters: { "sampleCount": 1 } };
-      const apiUrlImage = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
-
-      const responseImage = await fetch(apiUrlImage, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payloadImage)
-      });
-      const resultImage = await responseImage.json();
-      const base64Data = resultImage?.predictions?.[0]?.bytesBase64Encoded;
-      if (base64Data) {
-        setImageUrl(`data:image/png;base64,${base64Data}`);
-      } else {
-        setImageUrl('https://placehold.co/250x250/E0E0E0/808080?text=No+Image');
-      }
-
-    } catch (error) {
-      console.error("Error calling API:", error);
-      setExample("An error occurred while creating an example.");
-      setImageUrl('https://placehold.co/250x250/E0E0E0/808080?text=Image+Error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSave = () => {
-    onSaveFlashcard(word, meaning, example, imageUrl);
-    setWord('');
-    setMeaning('');
-    setExample('');
-    setImageUrl('');
-  };
-
-  return (
-    <div>
-      <h2 className="text-4xl font-bold text-gray-800 mb-6 text-center">Create Flashcards</h2>
-      <p className="text-lg text-gray-600 mb-4 text-center">Add vocabulary and use AI to generate examples and images.</p>
-      <div className="grid md:grid-cols-2 gap-6">
-        <div className="col-span-1 space-y-4">
-          <input
-            type="text"
-            placeholder="Vocabulary Word..."
-            value={word}
-            onChange={(e) => setWord(e.target.value)}
-            className="w-full p-4 text-lg rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
-          />
-          <input
-            type="text"
-            placeholder="Meaning..."
-            value={meaning}
-            onChange={(e) => setMeaning(e.target.value)}
-            className="w-full p-4 text-lg rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
-          />
-          <div className="text-right">
-            <button
-              onClick={generateWithAI}
-              className="px-6 py-3 bg-purple-600 text-white font-bold rounded-xl shadow-md hover:bg-purple-700 transition duration-300 disabled:opacity-50"
-              disabled={loading}
-            >
-              {loading ? 'Generating...' : 'Generate with AI'}
-            </button>
-          </div>
-        </div>
-        <div className="col-span-1">
-          {loading ? (
-            <div className="flex items-center justify-center h-full text-lg text-gray-500">Generating content...</div>
-          ) : (
-            <div className="bg-gray-50 p-6 rounded-xl shadow-md flex flex-col items-center">
-              <div className="w-64 h-64 mb-4 rounded-lg overflow-hidden border border-gray-200">
-                {imageUrl ? <img src={imageUrl} alt="Illustrative image" className="w-full h-full object-cover" /> : <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-500">Image will appear here</div>}
+    
+      // Save lessons to local storage whenever they change.
+      useEffect(() => {
+        localStorage.setItem('lessons', JSON.stringify(lessons));
+      }, [lessons]);
+    
+      // Save flashcards to local storage whenever they change.
+      useEffect(() => {
+        localStorage.setItem('flashcards', JSON.stringify(flashcards));
+      }, [flashcards]);
+    
+      // Function to change the current page.
+      const navigate = (page) => setCurrentPage(page);
+    
+      // Function to add a new lesson.
+      const addLesson = (title, content) => {
+        if (title && content) {
+          setLessons([...lessons, { id: Date.now(), title, content }]);
+          navigate('library');
+        }
+      };
+    
+      // Function to add a new flashcard.
+      const addFlashcard = (word, meaning, example, imageUrl) => {
+        if (word && meaning) {
+          setFlashcards([...flashcards, { id: Date.now(), word, meaning, example, imageUrl }]);
+        }
+      };
+    
+      // Renders the appropriate page based on the current navigation state.
+      const renderPage = () => {
+        switch (currentPage) {
+          case 'home':
+            return <Home navigate={navigate} />;
+          case 'library':
+            return <Library lessons={lessons} navigate={navigate} />;
+          case 'lessons':
+            return <Lessons onSaveLesson={addLesson} />;
+          case 'test':
+            return <Test lessons={lessons} />;
+          case 'flashcards':
+            return <Flashcards onSaveFlashcard={addFlashcard} />;
+          default:
+            return <Home navigate={navigate} />;
+        }
+      };
+    
+      return (
+        <div className="relative min-h-screen">
+          <Background />
+          <div className="absolute inset-0 flex flex-col z-10 p-4">
+            <Navigation navigate={navigate} currentPage={currentPage} />
+            <div className="flex-grow flex items-center justify-center p-4">
+              <div className="w-full max-w-4xl bg-white bg-opacity-90 backdrop-filter backdrop-blur-lg rounded-3xl shadow-2xl p-8 transition-all duration-500 transform">
+                {renderPage()}
               </div>
-              <p className="text-lg text-gray-700 text-center">{example || 'An example sentence will appear here.'}</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
+    // Background component with dynamic gradients and animations.
+    const Background = () => {
+      const [timeOfDay, setTimeOfDay] = useState('');
+    
+      useEffect(() => {
+        const updateTime = () => {
+          const hour = new Date().getHours();
+          if (hour >= 5 && hour < 9) {
+            setTimeOfDay('sunrise');
+          } else if (hour >= 9 && hour < 17) {
+            setTimeOfDay('day');
+          } else if (hour >= 17 && hour < 20) {
+            setTimeOfDay('sunset');
+          } else {
+            setTimeOfDay('night');
+          }
+        };
+        updateTime();
+        const interval = setInterval(updateTime, 60000);
+        return () => clearInterval(interval);
+      }, []);
+    
+      return (
+        <div className={`fixed inset-0 overflow-hidden transition-all duration-1000 ${timeOfDay}`}>
+          <div className="absolute inset-0 z-0">
+            <div className="absolute inset-0 background-gradient" />
+            {timeOfDay === 'night' && <NightSky />}
+            <AnimatedCharacters />
+          </div>
+        </div>
+      );
+    };
+    
+    const NightSky = () => (
+      <div className="absolute inset-0">
+        <div className="stars"></div>
+        <div className="shooting-star"></div>
+        <div className="shooting-star-2"></div>
+      </div>
+    );
+    
+    const AnimatedCharacters = () => {
+      return (
+        <>
+          <div className="character bear">
+            <div className="ear left-ear"></div>
+            <div className="ear right-ear"></div>
+            <div className="head"></div>
+            <div className="body"></div>
+          </div>
+    
+          <div className="character smurf">
+            <div className="hat"></div>
+            <div className="head"></div>
+            <div className="body"></div>
+          </div>
+    
+          <div className="character human">
+            <div className="head"></div>
+            <div className="body"></div>
+          </div>
+        </>
+      );
+    };
+    
+    // Navigation component.
+    const Navigation = ({ navigate, currentPage }) => {
+      const navItems = [
+        { name: 'Home', iconClass: 'fas fa-home', page: 'home' },
+        { name: 'Library', iconClass: 'fas fa-book', page: 'library' },
+        { name: 'Lessons', iconClass: 'fas fa-pen', page: 'lessons' },
+        { name: 'Test', iconClass: 'fas fa-graduation-cap', page: 'test' },
+        { name: 'Flashcards', iconClass: 'fas fa-feather-alt', page: 'flashcards' },
+      ];
+    
+      return (
+        <nav className="flex justify-center mb-6">
+          <ul className="flex space-x-2 bg-white bg-opacity-70 backdrop-filter backdrop-blur-lg rounded-full p-2 shadow-lg">
+            {navItems.map((item) => (
+              <li key={item.name}>
+                <button
+                  onClick={() => navigate(item.page)}
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-full transition-all duration-300 font-semibold
+                    ${currentPage === item.page ? 'bg-blue-600 text-white shadow-md' : 'text-gray-700 hover:bg-gray-200'}
+                  `}
+                >
+                  <i className={item.iconClass}></i>
+                  <span className="hidden sm:inline">{item.name}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      );
+    };
+    
+    // Home page component.
+    const Home = ({ navigate }) => {
+      return (
+        <div className="text-center">
+          <h1 className="text-5xl font-extrabold text-gray-800 mb-2">Welcome Back!</h1>
+          <p className="text-xl text-gray-600 mb-8">Ready to learn?</p>
+          <div className="space-y-4">
+            <button
+              onClick={() => navigate('library')}
+              className="w-full md:w-2/3 lg:w-1/2 block mx-auto px-6 py-4 bg-purple-600 text-white text-xl font-bold rounded-xl shadow-md hover:bg-purple-700 transition duration-300 transform hover:scale-105"
+            >
+              Go to Library
+            </button>
+            <button
+              onClick={() => navigate('lessons')}
+              className="w-full md:w-2/3 lg:w-1/2 block mx-auto px-6 py-4 bg-green-600 text-white text-xl font-bold rounded-xl shadow-md hover:bg-green-700 transition duration-300 transform hover:scale-105"
+            >
+              Start a New Lesson
+            </button>
+            <button
+              onClick={() => navigate('test')}
+              className="w-full md:w-2/3 lg:w-1/2 block mx-auto px-6 py-4 bg-indigo-600 text-white text-xl font-bold rounded-xl shadow-md hover:bg-indigo-700 transition duration-300 transform hover:scale-105"
+            >
+              Start a Test
+            </button>
+          </div>
+        </div>
+      );
+    };
+    
+    // Library page component to display saved lessons.
+    const Library = ({ lessons }) => {
+      return (
+        <div>
+          <h2 className="text-4xl font-bold text-gray-800 mb-6 text-center">Your Library</h2>
+          {lessons.length === 0 ? (
+            <p className="text-center text-gray-500 text-lg">You don't have any lessons yet. Start a new one!</p>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {lessons.map((lesson) => (
+                <div key={lesson.id} className="bg-gray-50 p-6 rounded-xl shadow-md border border-gray-200 hover:shadow-lg transition-all duration-300">
+                  <h3 className="text-xl font-bold text-blue-600 mb-2">{lesson.title}</h3>
+                  <p className="text-gray-700 line-clamp-3">{lesson.content}</p>
+                </div>
+              ))}
             </div>
           )}
         </div>
-      </div>
-      <div className="mt-6 text-right">
-        <button
-          onClick={handleSave}
-          className="px-6 py-3 bg-blue-600 text-white font-bold rounded-xl shadow-md hover:bg-blue-700 transition duration-300 disabled:opacity-50"
-          disabled={!word || !meaning || loading}
-        >
-          Save Flashcard
-        </button>
-      </div>
-    </div>
-  );
-};
+      );
+    };
+    
+    // Lessons page component for creating and saving new lessons.
+    const Lessons = ({ onSaveLesson }) => {
+      const [title, setTitle] = useState('');
+      const [content, setContent] = useState('');
+    
+      // Load saved content from local storage on component mount.
+      useEffect(() => {
+        const savedContent = localStorage.getItem('currentLessonContent');
+        if (savedContent) {
+          try {
+            const { savedTitle, savedContentText } = JSON.parse(savedContent);
+            setTitle(savedTitle);
+            setContent(savedContentText);
+          } catch (e) {
+            console.error("Failed to parse saved lesson content", e);
+          }
+        }
+      }, []);
+    
+      // Save content to local storage as it's being typed.
+      useEffect(() => {
+        localStorage.setItem('currentLessonContent', JSON.stringify({ savedTitle: title, savedContentText: content }));
+      }, [title, content]);
+    
+      const handleSave = () => {
+        onSaveLesson(title, content);
+        setTitle('');
+        setContent('');
+      };
+    
+      return (
+        <div className="flex flex-col h-full">
+          <h2 className="text-4xl font-bold text-gray-800 mb-6 text-center">Create a New Lesson</h2>
+          <input
+            type="text"
+            placeholder="Lesson Title..."
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="w-full p-4 mb-4 text-xl rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <textarea
+            placeholder="Write your lesson here..."
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            className="flex-grow w-full p-4 text-lg rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            rows="10"
+          />
+          <div className="mt-6 text-right">
+            <button
+              onClick={handleSave}
+              className="px-6 py-3 bg-blue-600 text-white font-bold rounded-xl shadow-md hover:bg-blue-700 transition duration-300"
+            >
+              Save Lesson
+            </button>
+          </div>
+        </div>
+      );
+    };
+    
+    // Test page component with AI feedback.
+    const Test = () => {
+      const [userText, setUserText] = useState('');
+      const [feedback, setFeedback] = useState(null);
+      const [loading, setLoading] = useState(false);
+    
+      const getAIFeedback = async () => {
+        if (!userText.trim()) return;
+    
+        setLoading(true);
+        setFeedback(null);
+        try {
+          const prompt = `Analyze the following text and provide detailed feedback. Correct grammar and spelling, suggest better vocabulary, and comment on the sentence structure. Respond in English.
+          Text: "${userText}"
+          `;
+    
+          const chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
+          const payload = { contents: chatHistory };
+          const apiKey = ""; // API key is handled by the environment.
+          const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+    
+          const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+    
+          if (!response.ok) {
+            throw new Error(`API call failed with status: ${response.status}`);
+          }
+    
+          const result = await response.json();
+    
+          if (result.candidates && result.candidates.length > 0 && result.candidates[0].content) {
+            setFeedback(result.candidates[0].content.parts[0].text);
+          } else {
+            setFeedback("Unable to get AI feedback. Please try again.");
+          }
+    
+        } catch (error) {
+          console.error("Error calling API:", error);
+          setFeedback("An error occurred while getting AI feedback. Please check your connection.");
+        } finally {
+          setLoading(false);
+        }
+      };
+    
+      return (
+        <div>
+          <h2 className="text-4xl font-bold text-gray-800 mb-6 text-center">AI-Powered Test</h2>
+          <p className="text-lg text-gray-600 mb-4 text-center">Paste your writing here to get AI feedback.</p>
+          <textarea
+            value={userText}
+            onChange={(e) => setUserText(e.target.value)}
+            className="w-full p-4 text-lg rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            rows="10"
+            placeholder="Paste your writing or lesson here..."
+          />
+          <div className="mt-6 text-right">
+            <button
+              onClick={getAIFeedback}
+              className="px-6 py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-md hover:bg-indigo-700 transition duration-300 disabled:opacity-50"
+              disabled={loading || !userText.trim()}
+            >
+              {loading ? 'Analyzing...' : 'Get Feedback'}
+            </button>
+          </div>
+    
+          {feedback && (
+            <div className="mt-8 bg-gray-50 p-6 rounded-xl shadow-inner border border-gray-200">
+              <h3 className="text-2xl font-bold text-gray-800 mb-4">AI Feedback:</h3>
+              <p className="whitespace-pre-wrap text-gray-700">{feedback}</p>
+            </div>
+          )}
+        </div>
+      );
+    };
+    
+    // Flashcards page component with AI generation.
+    const Flashcards = ({ onSaveFlashcard }) => {
+      const [word, setWord] = useState('');
+      const [meaning, setMeaning] = useState('');
+      const [example, setExample] = useState('');
+      const [imageUrl, setImageUrl] = useState('');
+      const [loading, setLoading] = useState(false);
+    
+      // Function to generate an example sentence and an image using AI.
+      const generateWithAI = async () => {
+        if (!word || !meaning) {
+          return;
+        }
+        setLoading(true);
+        setExample('');
+        setImageUrl('');
+    
+        try {
+          // Prompt for example sentence.
+          const promptExample = `Create an example sentence in English using the word "${word}" which means "${meaning}".`;
+          const payloadExample = { contents: [{ role: "user", parts: [{ text: promptExample }] }] };
+          const apiKey = "";
+          const apiUrlExample = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+    
+          const responseExample = await fetch(apiUrlExample, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payloadExample)
+          });
+          const resultExample = await responseExample.json();
+          const generatedExample = resultExample?.candidates?.[0]?.content?.parts?.[0]?.text;
+          setExample(generatedExample || 'Unable to generate an example sentence.');
+    
+          // Prompt for image generation.
+          const promptImage = `Create an illustrative image for the word "${word}" which means "${meaning}".`;
+          const payloadImage = { instances: { prompt: promptImage }, parameters: { "sampleCount": 1 } };
+          const apiUrlImage = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
+    
+          const responseImage = await fetch(apiUrlImage, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payloadImage)
+          });
+          const resultImage = await responseImage.json();
+          const base64Data = resultImage?.predictions?.[0]?.bytesBase64Encoded;
+          if (base64Data) {
+            setImageUrl(`data:image/png;base64,${base64Data}`);
+          } else {
+            setImageUrl('https://placehold.co/250x250/E0E0E0/808080?text=No+Image');
+          }
+        } catch (error) {
+          console.error("Error calling API:", error);
+          setExample("An error occurred while creating an example.");
+          setImageUrl('https://placehold.co/250x250/E0E0E0/808080?text=Image+Error');
+        } finally {
+          setLoading(false);
+        }
+      };
+    
+      const handleSave = () => {
+        onSaveFlashcard(word, meaning, example, imageUrl);
+        setWord('');
+        setMeaning('');
+        setExample('');
+        setImageUrl('');
+      };
+    
+      return (
+        <div>
+          <h2 className="text-4xl font-bold text-gray-800 mb-6 text-center">Create Flashcards</h2>
+          <p className="text-lg text-gray-600 mb-4 text-center">Add vocabulary and use AI to generate examples and images.</p>
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="col-span-1 space-y-4">
+              <input
+                type="text"
+                placeholder="Vocabulary Word..."
+                value={word}
+                onChange={(e) => setWord(e.target.value)}
+                className="w-full p-4 text-lg rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+              <input
+                type="text"
+                placeholder="Meaning..."
+                value={meaning}
+                onChange={(e) => setMeaning(e.target.value)}
+                className="w-full p-4 text-lg rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+              <div className="text-right">
+                <button
+                  onClick={generateWithAI}
+                  className="px-6 py-3 bg-purple-600 text-white font-bold rounded-xl shadow-md hover:bg-purple-700 transition duration-300 disabled:opacity-50"
+                  disabled={loading}
+                >
+                  {loading ? 'Generating...' : 'Generate with AI'}
+                </button>
+              </div>
+            </div>
+            <div className="col-span-1">
+              {loading ? (
+                <div className="flex items-center justify-center h-full text-lg text-gray-500">Generating content...</div>
+              ) : (
+                <div className="bg-gray-50 p-6 rounded-xl shadow-md flex flex-col items-center">
+                  <div className="w-64 h-64 mb-4 rounded-lg overflow-hidden border border-gray-200">
+                    {imageUrl ? <img src={imageUrl} alt="Illustrative image" className="w-full h-full object-cover" /> : <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-500">Image will appear here</div>}
+                  </div>
+                  <p className="text-lg text-gray-700 text-center">{example || 'An example sentence will appear here.'}</p>
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="mt-6 text-right">
+            <button
+              onClick={handleSave}
+              className="px-6 py-3 bg-blue-600 text-white font-bold rounded-xl shadow-md hover:bg-blue-700 transition duration-300 disabled:opacity-50"
+              disabled={!word || !meaning || loading}
+            >
+              Save Flashcard
+            </button>
+          </div>
+        </div>
+      );
+    };
 
-const styles = `
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css');
-
-body {
-  font-family: 'Inter', sans-serif;
-  overflow: hidden;
-}
-
-.background-gradient {
-  transition: opacity 1s ease-in-out;
-  height: 100vh;
-}
-
-.sunrise .background-gradient {
-  background: linear-gradient(135deg, #FF6B6B, #4ECDC4, #F7FFF7);
-}
-
-.day .background-gradient {
-  background: linear-gradient(135deg, #87CEEB, #F0F8FF, #FFD700);
-}
-
-.sunset .background-gradient {
-  background: linear-gradient(135deg, #FF6347, #FF8C00, #FFD700);
-}
-
-.night .background-gradient {
-  background: linear-gradient(135deg, #0A0A2A, #281D52, #4B0082);
-}
-
-.stars {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-image:
-    radial-gradient(2px 2px at 20px 30px, #eee, rgba(0,0,0,0)),
-    radial-gradient(2px 2px at 40px 70px, #eee, rgba(0,0,0,0)),
-    radial-gradient(2px 2px at 50px 160px, #eee, rgba(0,0,0,0)),
-    radial-gradient(2px 2px at 90px 40px, #eee, rgba(0,0,0,0)),
-    radial-gradient(2px 2px at 120px 80px, #eee, rgba(0,0,0,0)),
-    radial-gradient(2px 2px at 150px 10px, #eee, rgba(0,0,0,0)),
-    radial-gradient(2px 2px at 170px 150px, #eee, rgba(0,0,0,0));
-  background-repeat: repeat;
-  background-size: 200px 200px;
-  animation: twinkle 10s infinite;
-}
-
-.shooting-star {
-  position: absolute;
-  top: -100px;
-  left: 50%;
-  width: 2px;
-  height: 100px;
-  background: linear-gradient(to bottom, rgba(255,255,255,0), #fff);
-  transform: rotate(45deg);
-  animation: shoot 5s infinite linear;
-  animation-delay: 2s;
-}
-
-.shooting-star-2 {
-  position: absolute;
-  top: -200px;
-  left: 20%;
-  width: 2px;
-  height: 100px;
-  background: linear-gradient(to bottom, rgba(255,255,255,0), #fff);
-  transform: rotate(45deg);
-  animation: shoot 7s infinite linear;
-  animation-delay: 5s;
-}
-
-@keyframes twinkle {
-  0%, 100% { opacity: 0.8; }
-  50% { opacity: 0.5; }
-}
-
-@keyframes shoot {
-  0% { transform: translateY(0) translateX(0) rotate(45deg); opacity: 1; }
-  100% { transform: translateY(150vh) translateX(150vh) rotate(45deg); opacity: 0; }
-}
-
-.character {
-  position: absolute;
-  animation: float 15s infinite ease-in-out;
-  filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.2));
-}
-
-.bear {
-  width: 60px;
-  height: 60px;
-  bottom: 10%;
-  left: 5%;
-  animation: moveBear 20s infinite linear;
-}
-.bear .head { background-color: #A0522D; border-radius: 50%; width: 40px; height: 40px; position: absolute; top: 10px; left: 10px; }
-.bear .ear { background-color: #A0522D; border-radius: 50%; width: 20px; height: 20px; position: absolute; }
-.bear .left-ear { top: 0; left: 0; }
-.bear .right-ear { top: 0; right: 0; }
-
-.smurf {
-  width: 50px;
-  height: 50px;
-  top: 20%;
-  right: 15%;
-  animation: moveSmurf 18s infinite linear;
-}
-.smurf .head { background-color: #00BFFF; border-radius: 50%; width: 30px; height: 30px; position: absolute; top: 20px; left: 10px; }
-.smurf .hat { background-color: white; border-radius: 50%; width: 40px; height: 25px; position: absolute; top: 0; left: 5px; }
-
-.human {
-  width: 50px;
-  height: 70px;
-  bottom: 50%;
-  left: 30%;
-  animation: moveHuman 22s infinite linear;
-}
-.human .head { background-color: #FFDAB9; border-radius: 50%; width: 30px; height: 30px; position: absolute; top: 0; left: 10px; }
-.human .body { background-color: #6A5ACD; border-radius: 50% 50% 10px 10px; width: 40px; height: 40px; position: absolute; top: 30px; left: 5px; }
-
-@keyframes moveBear {
-  0% { transform: translate(0, 0); }
-  25% { transform: translate(100px, 50px); }
-  50% { transform: translate(200px, 0); }
-  75% { transform: translate(100px, -50px); }
-  100% { transform: translate(0, 0); }
-}
-
-@keyframes moveSmurf {
-  0% { transform: translate(0, 0); }
-  50% { transform: translate(-100px, 100px); }
-  100% { transform: translate(0, 0); }
-}
-
-@keyframes moveHuman {
-  0% { transform: translate(0, 0); }
-  50% { transform: translate(0, -100px); }
-  100% { transform: translate(0, 0); }
-}
-`;
-
-const rootElement = document.createElement('div');
-document.body.appendChild(rootElement);
-document.head.appendChild(document.createElement('style')).textContent = styles;
-createRoot(rootElement).render(<App />);
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(React.createElement(App, null));
+  </script>
+</body>
+</html>
