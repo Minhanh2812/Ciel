@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
-// Các import này đã được thay thế bằng link CDN để khắc phục lỗi biên dịch.
 
 function App() {
   const [currentPage, setCurrentPage] = useState('home');
@@ -146,9 +145,9 @@ const AnimatedCharacters = () => {
 const Navigation = ({ navigate, currentPage }) => {
   const navItems = [
     { name: 'Home', iconClass: 'fas fa-home', page: 'home' },
-    { name: 'Thư viện', iconClass: 'fas fa-book', page: 'library' },
-    { name: 'Bài học', iconClass: 'fas fa-pen', page: 'lessons' },
-    { name: 'Bài kiểm tra', iconClass: 'fas fa-graduation-cap', page: 'test' },
+    { name: 'Library', iconClass: 'fas fa-book', page: 'library' },
+    { name: 'Lessons', iconClass: 'fas fa-pen', page: 'lessons' },
+    { name: 'Test', iconClass: 'fas fa-graduation-cap', page: 'test' },
     { name: 'Flashcards', iconClass: 'fas fa-feather-alt', page: 'flashcards' },
   ];
 
@@ -176,8 +175,8 @@ const Navigation = ({ navigate, currentPage }) => {
 const Home = ({ navigate }) => {
   return (
     <div className="text-center">
-      <h1 className="text-5xl font-extrabold text-gray-800 mb-2">Chào mừng bạn quay trở lại!</h1>
-      <p className="text-xl text-gray-600 mb-8">Sẵn sàng học tập chưa?</p>
+      <h1 className="text-5xl font-extrabold text-gray-800 mb-2">Welcome Back!</h1>
+      <p className="text-xl text-gray-600 mb-8">Ready to learn?</p>
       <div className="space-y-4">
         <button
           onClick={() => navigate('library')}
@@ -205,9 +204,9 @@ const Home = ({ navigate }) => {
 const Library = ({ lessons }) => {
   return (
     <div>
-      <h2 className="text-4xl font-bold text-gray-800 mb-6 text-center">Thư viện của bạn</h2>
+      <h2 className="text-4xl font-bold text-gray-800 mb-6 text-center">Your Library</h2>
       {lessons.length === 0 ? (
-        <p className="text-center text-gray-500 text-lg">Bạn chưa có bài học nào. Hãy bắt đầu một bài học mới!</p>
+        <p className="text-center text-gray-500 text-lg">You don't have any lessons yet. Start a new one!</p>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {lessons.map((lesson) => (
@@ -251,16 +250,16 @@ const Lessons = ({ onSaveLesson }) => {
 
   return (
     <div className="flex flex-col h-full">
-      <h2 className="text-4xl font-bold text-gray-800 mb-6 text-center">Tạo Bài Học Mới</h2>
+      <h2 className="text-4xl font-bold text-gray-800 mb-6 text-center">Create a New Lesson</h2>
       <input
         type="text"
-        placeholder="Tiêu đề bài học..."
+        placeholder="Lesson Title..."
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         className="w-full p-4 mb-4 text-xl rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
       <textarea
-        placeholder="Viết bài học của bạn ở đây..."
+        placeholder="Write your lesson here..."
         value={content}
         onChange={(e) => setContent(e.target.value)}
         className="flex-grow w-full p-4 text-lg rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -271,7 +270,7 @@ const Lessons = ({ onSaveLesson }) => {
           onClick={handleSave}
           className="px-6 py-3 bg-blue-600 text-white font-bold rounded-xl shadow-md hover:bg-blue-700 transition duration-300"
         >
-          Lưu Bài Học
+          Save Lesson
         </button>
       </div>
     </div>
@@ -289,8 +288,8 @@ const Test = ({ lessons }) => {
     setLoading(true);
     setFeedback(null);
     try {
-      const prompt = `Phân tích đoạn văn sau và cung cấp phản hồi chi tiết. Hãy sửa lỗi ngữ pháp, chính tả, gợi ý từ vựng tốt hơn và đưa ra nhận xét về cấu trúc câu. Trả lời bằng tiếng Việt.
-      Đoạn văn: "${userText}"
+      const prompt = `Analyze the following text and provide detailed feedback. Correct grammar and spelling, suggest better vocabulary, and comment on the sentence structure. Respond in English.
+      Text: "${userText}"
       `;
 
       const chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
@@ -313,12 +312,12 @@ const Test = ({ lessons }) => {
       if (result.candidates && result.candidates.length > 0 && result.candidates[0].content) {
         setFeedback(result.candidates[0].content.parts[0].text);
       } else {
-        setFeedback("Không thể nhận phản hồi từ AI. Vui lòng thử lại.");
+        setFeedback("Unable to get AI feedback. Please try again.");
       }
 
     } catch (error) {
-      console.error("Lỗi khi gọi API:", error);
-      setFeedback("Đã xảy ra lỗi khi nhận phản hồi từ AI. Vui lòng kiểm tra lại kết nối.");
+      console.error("Error calling API:", error);
+      setFeedback("An error occurred while getting AI feedback. Please check your connection.");
     } finally {
       setLoading(false);
     }
@@ -326,14 +325,14 @@ const Test = ({ lessons }) => {
 
   return (
     <div>
-      <h2 className="text-4xl font-bold text-gray-800 mb-6 text-center">Bài Kiểm Tra với AI</h2>
-      <p className="text-lg text-gray-600 mb-4 text-center">Dán bài viết của bạn vào đây để nhận phản hồi từ AI.</p>
+      <h2 className="text-4xl font-bold text-gray-800 mb-6 text-center">AI-Powered Test</h2>
+      <p className="text-lg text-gray-600 mb-4 text-center">Paste your writing here to get AI feedback.</p>
       <textarea
         value={userText}
         onChange={(e) => setUserText(e.target.value)}
         className="w-full p-4 text-lg rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         rows="10"
-        placeholder="Dán bài viết hoặc bài học của bạn vào đây..."
+        placeholder="Paste your writing or lesson here..."
       />
       <div className="mt-6 text-right">
         <button
@@ -341,13 +340,13 @@ const Test = ({ lessons }) => {
           className="px-6 py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-md hover:bg-indigo-700 transition duration-300 disabled:opacity-50"
           disabled={loading || !userText.trim()}
         >
-          {loading ? 'Đang phân tích...' : 'Nhận Phản Hồi'}
+          {loading ? 'Analyzing...' : 'Get Feedback'}
         </button>
       </div>
 
       {feedback && (
         <div className="mt-8 bg-gray-50 p-6 rounded-xl shadow-inner border border-gray-200">
-          <h3 className="text-2xl font-bold text-gray-800 mb-4">Phản Hồi từ AI:</h3>
+          <h3 className="text-2xl font-bold text-gray-800 mb-4">AI Feedback:</h3>
           <p className="whitespace-pre-wrap text-gray-700">{feedback}</p>
         </div>
       )}
@@ -364,7 +363,7 @@ const Flashcards = ({ onSaveFlashcard }) => {
 
   const generateWithAI = async () => {
     if (!word || !meaning) {
-      // alert("Vui lòng nhập từ và nghĩa trước.");
+      // alert("Please enter a word and meaning first.");
       return;
     }
     setLoading(true);
@@ -372,7 +371,7 @@ const Flashcards = ({ onSaveFlashcard }) => {
     setImageUrl('');
 
     try {
-      const promptExample = `Tạo một câu ví dụ bằng tiếng Việt sử dụng từ "${word}" có nghĩa là "${meaning}".`;
+      const promptExample = `Create an example sentence in English using the word "${word}" which means "${meaning}".`;
       const payloadExample = { contents: [{ role: "user", parts: [{ text: promptExample }] }] };
       const apiKey = "";
       const apiUrlExample = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
@@ -384,9 +383,9 @@ const Flashcards = ({ onSaveFlashcard }) => {
       });
       const resultExample = await responseExample.json();
       const generatedExample = resultExample?.candidates?.[0]?.content?.parts?.[0]?.text;
-      setExample(generatedExample || 'Không thể tạo câu ví dụ.');
+      setExample(generatedExample || 'Unable to generate an example sentence.');
 
-      const promptImage = `Tạo một hình ảnh minh họa cho từ tiếng Việt "${word}" có nghĩa là "${meaning}".`;
+      const promptImage = `Create an illustrative image for the word "${word}" which means "${meaning}".`;
       const payloadImage = { instances: { prompt: promptImage }, parameters: { "sampleCount": 1 } };
       const apiUrlImage = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
 
@@ -400,13 +399,13 @@ const Flashcards = ({ onSaveFlashcard }) => {
       if (base64Data) {
         setImageUrl(`data:image/png;base64,${base64Data}`);
       } else {
-        setImageUrl('https://placehold.co/250x250/E0E0E0/808080?text=Không+có+hình');
+        setImageUrl('https://placehold.co/250x250/E0E0E0/808080?text=No+Image');
       }
 
     } catch (error) {
-      console.error("Lỗi khi gọi API:", error);
-      setExample("Đã xảy ra lỗi khi tạo câu ví dụ.");
-      setImageUrl('https://placehold.co/250x250/E0E0E0/808080?text=Lỗi+hình+ảnh');
+      console.error("Error calling API:", error);
+      setExample("An error occurred while creating an example.");
+      setImageUrl('https://placehold.co/250x250/E0E0E0/808080?text=Image+Error');
     } finally {
       setLoading(false);
     }
@@ -422,20 +421,20 @@ const Flashcards = ({ onSaveFlashcard }) => {
 
   return (
     <div>
-      <h2 className="text-4xl font-bold text-gray-800 mb-6 text-center">Tạo Flashcards</h2>
-      <p className="text-lg text-gray-600 mb-4 text-center">Thêm từ vựng và sử dụng AI để tạo ví dụ và hình ảnh.</p>
+      <h2 className="text-4xl font-bold text-gray-800 mb-6 text-center">Create Flashcards</h2>
+      <p className="text-lg text-gray-600 mb-4 text-center">Add vocabulary and use AI to generate examples and images.</p>
       <div className="grid md:grid-cols-2 gap-6">
         <div className="col-span-1 space-y-4">
           <input
             type="text"
-            placeholder="Từ vựng..."
+            placeholder="Vocabulary Word..."
             value={word}
             onChange={(e) => setWord(e.target.value)}
             className="w-full p-4 text-lg rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
           />
           <input
             type="text"
-            placeholder="Nghĩa..."
+            placeholder="Meaning..."
             value={meaning}
             onChange={(e) => setMeaning(e.target.value)}
             className="w-full p-4 text-lg rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
@@ -446,19 +445,19 @@ const Flashcards = ({ onSaveFlashcard }) => {
               className="px-6 py-3 bg-purple-600 text-white font-bold rounded-xl shadow-md hover:bg-purple-700 transition duration-300 disabled:opacity-50"
               disabled={loading}
             >
-              {loading ? 'Đang tạo...' : 'Tạo với AI'}
+              {loading ? 'Generating...' : 'Generate with AI'}
             </button>
           </div>
         </div>
         <div className="col-span-1">
           {loading ? (
-            <div className="flex items-center justify-center h-full text-lg text-gray-500">Đang tạo nội dung...</div>
+            <div className="flex items-center justify-center h-full text-lg text-gray-500">Generating content...</div>
           ) : (
             <div className="bg-gray-50 p-6 rounded-xl shadow-md flex flex-col items-center">
               <div className="w-64 h-64 mb-4 rounded-lg overflow-hidden border border-gray-200">
-                {imageUrl ? <img src={imageUrl} alt="Hình ảnh minh họa" className="w-full h-full object-cover" /> : <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-500">Hình ảnh sẽ xuất hiện ở đây</div>}
+                {imageUrl ? <img src={imageUrl} alt="Illustrative image" className="w-full h-full object-cover" /> : <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-500">Image will appear here</div>}
               </div>
-              <p className="text-lg text-gray-700 text-center">{example || 'Câu ví dụ sẽ xuất hiện ở đây.'}</p>
+              <p className="text-lg text-gray-700 text-center">{example || 'An example sentence will appear here.'}</p>
             </div>
           )}
         </div>
@@ -469,7 +468,7 @@ const Flashcards = ({ onSaveFlashcard }) => {
           className="px-6 py-3 bg-blue-600 text-white font-bold rounded-xl shadow-md hover:bg-blue-700 transition duration-300 disabled:opacity-50"
           disabled={!word || !meaning || loading}
         >
-          Lưu Flashcard
+          Save Flashcard
         </button>
       </div>
     </div>
