@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Learning Web App</title>
+  <title>GEMMA</title>
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
@@ -146,13 +146,26 @@
       50% { transform: translate(0, -100px); }
       100% { transform: translate(0, 0); }
     }
+    
+    .editor-container {
+        border-radius: 0.75rem; /* rounded-xl */
+        border-width: 1px; /* border */
+        border-color: #d1d5db; /* border-gray-300 */
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); /* shadow */
+        transition: box-shadow 0.3s ease-in-out;
+    }
+
+    .editor-container:focus-within {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5); /* focus:ring-2 focus:ring-blue-500 */
+    }
   </style>
 </head>
 <body>
   <div id="root"></div>
 
   <script>
-    const { useState, useEffect, createElement } = React;
+    const { useState, useEffect, createElement, useRef } = React;
     const { createRoot } = ReactDOM;
 
     // The main App component that handles navigation and state.
@@ -385,7 +398,8 @@
               lessons.map((lesson) => (
                 createElement('div', { key: lesson.id, className: `bg-gray-50 p-6 rounded-xl shadow-md border border-gray-200 hover:shadow-lg transition-all duration-300 ${lesson.isSavedItem ? 'bg-yellow-50' : ''}` },
                   createElement('h3', { className: 'text-xl font-bold text-blue-600 mb-2' }, lesson.title),
-                  createElement('p', { className: 'text-gray-700 line-clamp-3 whitespace-pre-wrap' }, lesson.content)
+                  // Use dangerouslySetInnerHTML to render the rich text content
+                  createElement('div', { className: 'text-gray-700 line-clamp-3 whitespace-pre-wrap', dangerouslySetInnerHTML: { __html: lesson.content } })
                 )
               ))
             )
@@ -576,7 +590,7 @@
         - Fill in the blanks
         - Matching Headings (provide a list of headings to match)
         - Short Answer Questions.
-        Each passage should be a self-contained object. The output must be a single JSON object with a 'passages' array. Each passage object should have a 'title', 'text', and a 'questions' array. Each question object should have a 'type', 'questionText', and 'correctAnswer'. For 'fill_in_the_blanks' questions, the questionText should contain a blank space to be filled. For 'matching_headings', the passage should contain section titles and the question object should contain a list of headings to match.`;
+        Each passage should be a self-contained object. The output must be a single JSON object with a 'passages' array. Each passage object should have a 'title', 'text', and a 'questions' array. Each question object should have a 'type', 'questionText', and a 'correctAnswer'. For 'fill_in_the_blanks' questions, the questionText should contain a blank space to be filled. For 'matching_headings', the passage should contain section titles and the question object should contain a list of headings to match.`;
 
         const responseSchema = {
           type: "OBJECT",
@@ -1079,10 +1093,11 @@
       }
     };
 
-    // Lessons page component for creating and saving new lessons.
+    // Lessons page component for creating and saving new lessons with rich text editing.
     const Lessons = ({ onSaveLesson }) => {
       const [title, setTitle] = useState('');
       const [content, setContent] = useState('');
+      const editorRef = useRef(null);
 
       useEffect(() => {
         const savedContent = localStorage.getItem('currentLessonContent');
@@ -1090,7 +1105,9 @@
           try {
             const { savedTitle, savedContentText } = JSON.parse(savedContent);
             setTitle(savedTitle);
-            setContent(savedContentText);
+            if (editorRef.current) {
+              editorRef.current.innerHTML = savedContentText;
+            }
           } catch (e) {
             console.error("Failed to parse saved lesson content", e);
           }
@@ -1098,13 +1115,31 @@
       }, []);
 
       useEffect(() => {
-        localStorage.setItem('currentLessonContent', JSON.stringify({ savedTitle: title, savedContentText: content }));
-      }, [title, content]);
+        const interval = setInterval(() => {
+            if (editorRef.current) {
+                localStorage.setItem('currentLessonContent', JSON.stringify({ savedTitle: title, savedContentText: editorRef.current.innerHTML }));
+            }
+        }, 1000); // Save content to localStorage every second
+        return () => clearInterval(interval);
+      }, [title]);
 
       const handleSave = () => {
-        onSaveLesson(title, content);
+        onSaveLesson(title, editorRef.current.innerHTML);
         setTitle('');
-        setContent('');
+        if (editorRef.current) {
+          editorRef.current.innerHTML = '';
+        }
+        localStorage.removeItem('currentLessonContent');
+      };
+
+      const handleFormatting = (command, value = null) => {
+        document.execCommand(command, false, value);
+        editorRef.current.focus();
+      };
+
+      const handleHighlight = () => {
+        // Use a color for the highlight
+        handleFormatting('hiliteColor', '#fcd34d'); // Tailwind's yellow-300
       };
 
       return createElement('div', { className: 'flex flex-col h-full' },
@@ -1116,12 +1151,30 @@
           onChange: (e) => setTitle(e.target.value),
           className: 'w-full p-4 mb-4 text-xl rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500'
         }),
-        createElement('textarea', {
-          placeholder: 'Write your lesson content here...',
-          value: content,
-          onChange: (e) => setContent(e.target.value),
-          className: 'flex-grow w-full p-4 text-lg rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 h-96',
-          rows: '10'
+        // New Rich Text Editor Toolbar
+        createElement('div', { className: 'flex space-x-2 p-2 bg-gray-100 rounded-t-xl border-t border-x border-gray-300' },
+          createElement('button', {
+            onClick: () => handleFormatting('bold'),
+            className: 'px-3 py-2 text-gray-700 hover:bg-gray-200 rounded-md transition-colors'
+          }, createElement('i', { className: 'fas fa-bold' })),
+          createElement('button', {
+            onClick: () => handleFormatting('italic'),
+            className: 'px-3 py-2 text-gray-700 hover:bg-gray-200 rounded-md transition-colors'
+          }, createElement('i', { className: 'fas fa-italic' })),
+          createElement('button', {
+            onClick: () => handleFormatting('underline'),
+            className: 'px-3 py-2 text-gray-700 hover:bg-gray-200 rounded-md transition-colors'
+          }, createElement('i', { className: 'fas fa-underline' })),
+          createElement('button', {
+            onClick: handleHighlight,
+            className: 'px-3 py-2 text-gray-700 hover:bg-gray-200 rounded-md transition-colors'
+          }, createElement('i', { className: 'fas fa-highlighter' }))
+        ),
+        // New contenteditable div for rich text
+        createElement('div', {
+          ref: editorRef,
+          contentEditable: true,
+          className: 'flex-grow w-full p-4 text-lg bg-white rounded-b-xl border-x border-b border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 h-96 overflow-y-auto'
         }),
         createElement('div', { className: 'mt-6 text-right' },
           createElement('button', {
