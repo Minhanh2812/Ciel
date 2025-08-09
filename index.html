@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CIEL</title>
+  <title>Learning Web App</title>
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
@@ -157,7 +157,10 @@
 
     // The main App component that handles navigation and state.
     function App() {
-      const [currentPage, setCurrentPage] = useState('home');
+      // Use a history stack to manage navigation, allowing for a back button.
+      const [pageHistory, setPageHistory] = useState(['home']);
+      const currentPage = pageHistory[pageHistory.length - 1];
+
       const [lessons, setLessons] = useState(() => {
         try {
           const storedLessons = localStorage.getItem('lessons');
@@ -185,12 +188,24 @@
         localStorage.setItem('flashcards', JSON.stringify(flashcards));
       }, [flashcards]);
 
-      const navigate = (page) => setCurrentPage(page);
+      // Function to navigate to a new page, pushing it to the history stack.
+      const navigate = (page) => {
+        setPageHistory(prevHistory => [...prevHistory, page]);
+      };
+
+      // Function to go back to the previous page by popping from the history stack.
+      const goBack = () => {
+        if (pageHistory.length > 1) {
+          setPageHistory(prevHistory => prevHistory.slice(0, -1));
+        }
+      };
 
       const addLesson = (title, content) => {
         if (title && content) {
           setLessons([...lessons, { id: Date.now(), title, content }]);
-          navigate('library');
+          // Navigate to the library after saving, but don't add to history here.
+          // Or, go back. Let's make it simple and just go back.
+          goBack();
         }
       };
 
@@ -209,7 +224,7 @@
           case 'home':
             return createElement(Home, { navigate });
           case 'library':
-            return createElement(Library, { lessons, navigate });
+            return createElement(Library, { lessons, flashcards, navigate });
           case 'lessons':
             return createElement(Lessons, { onSaveLesson: addLesson });
           case 'test':
@@ -227,12 +242,25 @@
           createElement(Navigation, { navigate, currentPage }),
           createElement('div', { className: 'flex-grow flex items-start justify-center p-4' },
             createElement('div', { className: 'w-full max-w-4xl bg-white bg-opacity-90 backdrop-filter backdrop-blur-lg rounded-3xl shadow-2xl p-8 transition-all duration-500 transform' },
+              // Back button will appear here
+              pageHistory.length > 1 && createElement(BackButton, { goBack }),
               renderPage()
             )
           )
         )
       );
     }
+
+    // New Back Button component
+    const BackButton = ({ goBack }) => {
+      return createElement('button', {
+        onClick: goBack,
+        className: 'flex items-center space-x-2 px-4 py-2 mb-4 text-gray-700 bg-gray-200 rounded-full shadow-md hover:bg-gray-300 transition duration-300'
+      },
+        createElement('i', { className: 'fas fa-arrow-left' }),
+        createElement('span', null, 'Back')
+      );
+    };
 
     // Background component with dynamic gradients and animations.
     const Background = () => {
@@ -298,11 +326,11 @@
     // Navigation component.
     const Navigation = ({ navigate, currentPage }) => {
       const navItems = [
-        { name: 'Trang chủ', iconClass: 'fas fa-home', page: 'home' },
-        { name: 'Thư viện', iconClass: 'fas fa-book', page: 'library' },
-        { name: 'Bài học', iconClass: 'fas fa-pen', page: 'lessons' },
-        { name: 'Kiểm tra', iconClass: 'fas fa-graduation-cap', page: 'test' },
-        { name: 'Flashcard', iconClass: 'fas fa-feather-alt', page: 'flashcards' },
+        { name: 'Home', iconClass: 'fas fa-home', page: 'home' },
+        { name: 'Library', iconClass: 'fas fa-book', page: 'library' },
+        { name: 'Lessons', iconClass: 'fas fa-pen', page: 'lessons' },
+        { name: 'Test', iconClass: 'fas fa-graduation-cap', page: 'test' },
+        { name: 'Flashcards', iconClass: 'fas fa-feather-alt', page: 'flashcards' },
       ];
 
       return createElement('nav', { className: 'flex justify-center mb-6' },
@@ -325,39 +353,59 @@
     // Home page component.
     const Home = ({ navigate }) => {
       return createElement('div', { className: 'text-center' },
-        createElement('h1', { className: 'text-5xl font-extrabold text-gray-800 mb-2' }, 'Chào mừng bạn quay trở lại!'),
-        createElement('p', { className: 'text-xl text-gray-600 mb-8' }, 'Bạn đã sẵn sàng học chưa?'),
+        createElement('h1', { className: 'text-5xl font-extrabold text-gray-800 mb-2' }, 'Welcome back!'),
+        createElement('p', { className: 'text-xl text-gray-600 mb-8' }, 'Are you ready to learn?'),
         createElement('div', { className: 'space-y-4' },
           createElement('button', {
             onClick: () => navigate('library'),
             className: 'w-full md:w-2/3 lg:w-1/2 block mx-auto px-6 py-4 bg-purple-600 text-white text-xl font-bold rounded-xl shadow-md hover:bg-purple-700 transition duration-300 transform hover:scale-105'
-          }, 'Đi đến Thư viện'),
+          }, 'Go to Library'),
           createElement('button', {
             onClick: () => navigate('lessons'),
             className: 'w-full md:w-2/3 lg:w-1/2 block mx-auto px-6 py-4 bg-green-600 text-white text-xl font-bold rounded-xl shadow-md hover:bg-green-700 transition duration-300 transform hover:scale-105'
-          }, 'Tạo bài học mới'),
+          }, 'Create a new lesson'),
           createElement('button', {
             onClick: () => navigate('test'),
             className: 'w-full md:w-2/3 lg:w-1/2 block mx-auto px-6 py-4 bg-indigo-600 text-white text-xl font-bold rounded-xl shadow-md hover:bg-indigo-700 transition duration-300 transform hover:scale-105'
-          }, 'Bắt đầu một bài kiểm tra')
+          }, 'Start a test')
         )
       );
     };
 
-    // Library page component to display saved lessons.
-    const Library = ({ lessons }) => {
+    // Library page component to display saved lessons and flashcards.
+    const Library = ({ lessons, flashcards }) => {
       return createElement('div', null,
-        createElement('h2', { className: 'text-4xl font-bold text-gray-800 mb-6 text-center' }, 'Thư viện của bạn'),
-        lessons.length === 0 ? (
-          createElement('p', { className: 'text-center text-gray-500 text-lg' }, "Bạn chưa có bài học nào được lưu. Hãy tạo một bài mới hoặc làm bài kiểm tra để lưu các câu trả lời sai!")
-        ) : (
-          createElement('div', { className: 'grid md:grid-cols-2 lg:grid-cols-3 gap-6' },
-            lessons.map((lesson) => (
-              createElement('div', { key: lesson.id, className: `bg-gray-50 p-6 rounded-xl shadow-md border border-gray-200 hover:shadow-lg transition-all duration-300 ${lesson.isSavedItem ? 'bg-yellow-50' : ''}` },
-                createElement('h3', { className: 'text-xl font-bold text-blue-600 mb-2' }, lesson.title),
-                createElement('p', { className: 'text-gray-700 line-clamp-3 whitespace-pre-wrap' }, lesson.content)
-              )
-            ))
+        createElement('h2', { className: 'text-4xl font-bold text-gray-800 mb-6 text-center' }, 'Your Library'),
+        createElement('div', { className: 'mb-8' },
+          createElement('h3', { className: 'text-2xl font-bold text-gray-800 mb-4' }, 'Saved Lessons'),
+          lessons.length === 0 ? (
+            createElement('p', { className: 'text-center text-gray-500 text-lg' }, "You don't have any saved lessons yet.")
+          ) : (
+            createElement('div', { className: 'grid md:grid-cols-2 lg:grid-cols-3 gap-6' },
+              lessons.map((lesson) => (
+                createElement('div', { key: lesson.id, className: `bg-gray-50 p-6 rounded-xl shadow-md border border-gray-200 hover:shadow-lg transition-all duration-300 ${lesson.isSavedItem ? 'bg-yellow-50' : ''}` },
+                  createElement('h3', { className: 'text-xl font-bold text-blue-600 mb-2' }, lesson.title),
+                  createElement('p', { className: 'text-gray-700 line-clamp-3 whitespace-pre-wrap' }, lesson.content)
+                )
+              ))
+            )
+          )
+        ),
+        createElement('div', null,
+          createElement('h3', { className: 'text-2xl font-bold text-gray-800 mb-4' }, 'Saved Flashcards'),
+          flashcards.length === 0 ? (
+            createElement('p', { className: 'text-center text-gray-500 text-lg' }, "You don't have any saved flashcards yet.")
+          ) : (
+            createElement('div', { className: 'grid md:grid-cols-2 lg:grid-cols-3 gap-6' },
+              flashcards.map((card) => (
+                createElement('div', { key: card.id, className: 'bg-gray-50 p-6 rounded-xl shadow-md border border-gray-200 hover:shadow-lg transition-all duration-300' },
+                  card.imageUrl && createElement('img', { src: card.imageUrl, alt: `Image for the word ${card.word}`, className: 'w-full h-40 object-cover rounded-md mb-4' }),
+                  createElement('h4', { className: 'text-2xl font-bold text-purple-600 mb-2' }, card.word),
+                  createElement('p', { className: 'text-gray-700' }, card.meaning),
+                  card.example && createElement('p', { className: 'text-gray-500 italic mt-2' }, card.example)
+                )
+              ))
+            )
           )
         )
       );
@@ -383,8 +431,7 @@
       const toeicParts = ['Part 5', 'Part 6', 'Part 7'];
       const topicsFromLessons = lessons.map(l => l.title);
       const allTopics = ['English Grammar', 'Vocabulary', 'Science', 'History'].concat(topicsFromLessons);
-      const ieltsQuestionTypes = ['multiple_choice', 'fill_in_the_blanks', 'true_false_not_given', 'matching_headings', 'short_answer'];
-
+      
       // Timer effect hook
       useEffect(() => {
         let timer;
@@ -395,7 +442,7 @@
                 setTimerValue(prevTime => prevTime - 1);
               }, 1000);
             } else if (timerValue === 0) {
-              handleSubmitTest(); // Changed to handleSubmitTest
+              handleSubmitTest();
             }
           } else { // Stopwatch
             timer = setInterval(() => {
@@ -421,17 +468,15 @@
         let newTimeLimit = testConfig.timeLimit;
 
         if (newLevel === 'TOEIC') {
-          // Set default TOEIC part and questions
           newToeicPart = 'Part 5';
           newNumQuestions = 30;
-          newTimeLimit = 0; // Default to stopwatch
+          newTimeLimit = 0;
         } else if (newLevel === 'IELTS') {
-          // Set default IELTS config
           newNumQuestions = 40;
-          newTimeLimit = 60; // 60 minutes for IELTS Reading
+          newTimeLimit = 60;
         } else {
           newNumQuestions = 5;
-          newTimeLimit = 0; // Default to stopwatch
+          newTimeLimit = 0;
         }
         setTestConfig({ ...testConfig, level: newLevel, numQuestions: newNumQuestions, timeLimit: newTimeLimit, toeicPart: newToeicPart });
       };
@@ -465,14 +510,14 @@
             items: {
                 type: "OBJECT",
                 properties: {
-                    "question": { "type": "STRING" },
+                    "questionText": { "type": "STRING" },
                     "options": {
                         "type": "ARRAY",
                         "items": { "type": "STRING" }
                     },
                     "correctAnswer": { "type": "STRING" }
                 },
-                "propertyOrdering": ["question", "options", "correctAnswer"]
+                "propertyOrdering": ["questionText", "options", "correctAnswer"]
             }
         };
 
@@ -508,7 +553,8 @@
             const result = await response.json();
             const json = result.candidates?.[0]?.content?.parts?.[0]?.text;
             const parsedData = JSON.parse(json);
-            setQuestions(parsedData);
+            const questionsWithIds = parsedData.map((q, index) => ({ ...q, id: `q${index + 1}` }));
+            setQuestions(questionsWithIds);
         } catch (error) {
             console.error("Error generating multiple choice questions:", error);
             setQuestions([]);
@@ -517,15 +563,13 @@
         } finally {
             setLoading(false);
         }
-    };
+      };
 
-    // New function to handle starting the IELTS reading test
-    const handleStartIELTSReading = async () => {
+      // New function to handle starting the IELTS reading test
+      const handleStartIELTSReading = async () => {
         if (loading) return;
         setLoading(true);
 
-        // IELTS Reading has 40 questions, 3 passages, and a 60 minute time limit.
-        // We'll create a single prompt to generate all of this.
         const prompt = `Create an IELTS Reading test with 3 passages and 40 questions of various types. The test should be for the ${testConfig.ieltsType} module. The question types should be a mix of:
         - Multiple Choice
         - True/False/Not Given
@@ -542,14 +586,14 @@
               "items": {
                 "type": "OBJECT",
                 "properties": {
-                  "title": { "type": "STRING" }, // e.g., 'multiple_choice', 'true_false_not_given'
+                  "title": { "type": "STRING" },
                   "text": { "type": "STRING" },
                   "questions": {
                     "type": "ARRAY",
                     "items": {
                       "type": "OBJECT",
                       "properties": {
-                        "type": { "type": "STRING" },
+                        "type": { "type": "STRING" }, // e.g., 'multiple_choice', 'true_false_not_given'
                         "questionText": { "type": "STRING" },
                         "options": {
                           "type": "ARRAY",
@@ -594,7 +638,6 @@
             const parsedData = JSON.parse(json);
             setIeltsPassages(parsedData.passages);
 
-            // Collect all questions from all passages into a single array
             let allIeltsQuestions = [];
             let questionNumber = 1;
             parsedData.passages.forEach((passage, passageIndex) => {
@@ -613,7 +656,7 @@
         } finally {
             setLoading(false);
         }
-    };
+      };
 
       const handleAnswerChange = (questionId, value) => {
         setUserAnswers(prev => ({ ...prev, [questionId]: value }));
@@ -633,8 +676,8 @@
                 score++;
             } else {
                 incorrectAnswers.push({
-                    question: q.questionText,
-                    userAnswer: userAnswer || 'Không trả lời',
+                    questionText: q.questionText,
+                    userAnswer: userAnswer || 'Not answered',
                     correctAnswer: q.correctAnswer,
                 });
             }
@@ -643,12 +686,12 @@
       };
 
       const handleSaveIncorrectAnswers = (incorrectAnswers) => {
-        const title = `Lỗi sai từ bài kiểm tra (${new Date().toLocaleDateString()})`;
-        let content = "Các câu trả lời sai:\n";
+        const title = `Incorrect Answers from Test (${new Date().toLocaleDateString()})`;
+        let content = "Incorrect answers:\n";
         incorrectAnswers.forEach((item, index) => {
-          content += `\nCâu ${index + 1}: ${item.question}\n`;
-          content += `Đáp án của bạn: ${item.userAnswer}\n`;
-          content += `Đáp án đúng: ${item.correctAnswer}\n`;
+          content += `\nQuestion ${index + 1}: ${item.questionText}\n`;
+          content += `Your answer: ${item.userAnswer}\n`;
+          content += `Correct answer: ${item.correctAnswer}\n`;
         });
         onSaveItem(title, content);
       };
@@ -658,8 +701,8 @@
         setLoading(true);
         setWritingFeedback(null);
         try {
-          const prompt = `Phân tích bài viết sau và đưa ra phản hồi chi tiết bằng tiếng Việt. Sửa lỗi ngữ pháp, chính tả, gợi ý từ vựng tốt hơn, và nhận xét về cấu trúc câu.
-          Bài viết: "${writingText}"
+          const prompt = `Analyze the following essay and provide detailed feedback in English. Correct grammar and spelling errors, suggest better vocabulary, and comment on the sentence structure.
+          Essay: "${writingText}"
           `;
           const chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
           const payload = { contents: chatHistory };
@@ -674,7 +717,7 @@
           setWritingFeedback(result.candidates?.[0]?.content?.parts?.[0]?.text);
         } catch (error) {
           console.error("Error getting writing feedback:", error);
-          setWritingFeedback("Đã xảy ra lỗi khi lấy phản hồi. Vui lòng thử lại.");
+          setWritingFeedback("An error occurred while fetching feedback. Please try again.");
         } finally {
           setLoading(false);
         }
@@ -685,7 +728,7 @@
         setLoading(true);
         setWritingTopic('');
         try {
-          const prompt = `Đưa ra một chủ đề ngẫu nhiên để viết một bài luận tiếng Anh khoảng 250 từ. Chủ đề phải phù hợp với cấp độ từ B1 đến C2. Ví dụ: "The impact of social media on mental health." Chỉ trả về chủ đề, không thêm bất kỳ văn bản nào khác.`;
+          const prompt = `Provide a random topic for a 250-word English essay. The topic should be suitable for a B1 to C2 level. Example: "The impact of social media on mental health." Return only the topic, no other text.`;
           const chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
           const payload = { contents: chatHistory };
           const apiKey = "";
@@ -699,7 +742,7 @@
           setWritingTopic(result.candidates?.[0]?.content?.parts?.[0]?.text.trim());
         } catch (error) {
           console.error("Error generating writing topic:", error);
-          setWritingTopic("Không thể tạo chủ đề. Vui lòng thử lại.");
+          setWritingTopic("Failed to generate a topic. Please try again.");
         } finally {
           setLoading(false);
         }
@@ -707,8 +750,8 @@
 
       const handleSaveWritingFeedback = () => {
         if (writingFeedback) {
-          const title = `Phản hồi cho bài viết: "${writingTopic || 'Chủ đề tự chọn'}"`;
-          const content = `Bài viết của bạn:\n${writingText}\n\nPhản hồi chi tiết:\n${writingFeedback}`;
+          const title = `Feedback for Essay: "${writingTopic || 'Custom Topic'}"`;
+          const content = `Your Essay:\n${writingText}\n\nDetailed Feedback:\n${writingFeedback}`;
           onSaveItem(title, content);
         }
       };
@@ -716,16 +759,16 @@
       // UI to select test type
       if (!testType) {
         return createElement('div', { className: 'text-center' },
-          createElement('h2', { className: 'text-4xl font-bold text-gray-800 mb-6' }, 'Chọn loại bài kiểm tra'),
+          createElement('h2', { className: 'text-4xl font-bold text-gray-800 mb-6' }, 'Choose a Test Type'),
           createElement('div', { className: 'space-y-4' },
             createElement('button', {
               onClick: () => setTestType('multiple-choice'),
               className: 'w-full md:w-2/3 lg:w-1/2 block mx-auto px-6 py-4 bg-blue-600 text-white text-xl font-bold rounded-xl shadow-md hover:bg-blue-700 transition duration-300 transform hover:scale-105'
-            }, 'Trắc nghiệm'),
+            }, 'Multiple Choice Test'),
             createElement('button', {
               onClick: () => setTestType('writing'),
               className: 'w-full md:w-2/3 lg:w-1/2 block mx-auto px-6 py-4 bg-green-600 text-white text-xl font-bold rounded-xl shadow-md hover:bg-green-700 transition duration-300 transform hover:scale-105'
-            }, 'Viết luận')
+            }, 'Essay Writing')
           )
         );
       }
@@ -749,7 +792,7 @@
                 // Questions column
                 createElement('div', { className: 'w-1/2 overflow-y-auto pl-4' },
                     createElement('div', { className: 'sticky top-0 bg-white bg-opacity-90 p-2 z-10' },
-                        createElement('span', { className: 'text-lg font-bold text-gray-800' }, `Thời gian còn lại: ${formatTime(timerValue)}`)
+                        createElement('span', { className: 'text-lg font-bold text-gray-800' }, `Time remaining: ${formatTime(timerValue)}`)
                     ),
                     questions.map((q, qIndex) => {
                         const isCurrentPassageQuestion = q.passageId === currentPassage.passageId;
@@ -795,12 +838,9 @@
                                 ))
                             );
                         } else if (q.type === 'matching_headings') {
-                            // This part of the logic needs a specific UI for drag-and-drop or dropdowns, which is complex.
-                            // For simplicity, we'll render it as short answer for now, and note the limitation.
-                            // The LLM prompt asks for a list of headings to match, so we can display them.
                             return createElement('div', { key: q.id, className: 'mb-4' },
                                 createElement('p', { className: 'font-semibold text-gray-800 mb-2' }, `${qIndex + 1}. ${q.questionText}`),
-                                createElement('p', { className: 'text-sm text-gray-600 mb-2' }, 'Vui lòng điền đáp án bằng cách nối tiêu đề với đoạn văn.'),
+                                createElement('p', { className: 'text-sm text-gray-600 mb-2' }, 'Please match the headings to the paragraphs.'),
                                 createElement('input', {
                                     type: 'text',
                                     value: userAnswers[q.id] || '',
@@ -824,7 +864,7 @@
                         createElement('button', {
                             onClick: handleSubmitTest,
                             className: 'px-6 py-3 bg-green-600 text-white font-bold rounded-xl shadow-md hover:bg-green-700 transition duration-300',
-                        }, 'Nộp bài')
+                        }, 'Submit Test')
                     )
                 )
             );
@@ -832,15 +872,15 @@
 
         // Configuration View for all tests
         return createElement('div', null,
-          createElement('h2', { className: 'text-4xl font-bold text-gray-800 mb-6 text-center' }, 'Bài kiểm tra trắc nghiệm'),
+          createElement('h2', { className: 'text-4xl font-bold text-gray-800 mb-6 text-center' }, 'Multiple Choice Test'),
           isTestRunning && createElement('div', { className: 'absolute top-4 right-4 bg-white bg-opacity-80 p-2 rounded-xl shadow-md' },
             createElement('span', { className: 'text-lg font-bold text-gray-800' },
-              isCountdown ? `Thời gian còn lại: ${formatTime(timerValue)}` : `Thời gian đã trôi qua: ${formatTime(timerValue)}`
+              isCountdown ? `Time remaining: ${formatTime(timerValue)}` : `Time elapsed: ${formatTime(timerValue)}`
             )
           ),
           !isTestRunning && !questions.length && !loading && createElement('div', null,
             createElement('div', { className: 'mb-4' },
-              createElement('label', { className: 'block text-gray-700 font-bold mb-2' }, 'Cấp độ:'),
+              createElement('label', { className: 'block text-gray-700 font-bold mb-2' }, 'Level:'),
               createElement('select', {
                 value: testConfig.level,
                 onChange: handleLevelChange,
@@ -850,7 +890,7 @@
               )
             ),
             testConfig.level === 'IELTS' && createElement('div', { className: 'mb-4' },
-                createElement('label', { className: 'block text-gray-700 font-bold mb-2' }, 'Loại hình IELTS:'),
+                createElement('label', { className: 'block text-gray-700 font-bold mb-2' }, 'IELTS Type:'),
                 createElement('select', {
                     value: testConfig.ieltsType,
                     onChange: (e) => setTestConfig({ ...testConfig, ieltsType: e.target.value }),
@@ -861,7 +901,7 @@
                 )
             ),
             testConfig.level === 'TOEIC' && createElement('div', { className: 'mb-4' },
-                createElement('label', { className: 'block text-gray-700 font-bold mb-2' }, 'Chọn Part TOEIC:'),
+                createElement('label', { className: 'block text-gray-700 font-bold mb-2' }, 'Select TOEIC Part:'),
                 createElement('select', {
                     value: testConfig.toeicPart,
                     onChange: handleToeicPartChange,
@@ -871,18 +911,18 @@
                 )
             ),
             createElement('div', { className: 'mb-4' },
-              createElement('label', { className: 'block text-gray-700 font-bold mb-2' }, 'Chủ đề:'),
+              createElement('label', { className: 'block text-gray-700 font-bold mb-2' }, 'Topic:'),
               createElement('select', {
                 value: testConfig.topic,
                 onChange: (e) => setTestConfig({ ...testConfig, topic: e.target.value }),
                 className: `w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 ${isExamLevel ? 'bg-gray-200' : ''}`
               },
-                createElement('option', { value: '' }, 'Chọn chủ đề...'),
+                createElement('option', { value: '' }, 'Select a topic...'),
                 allTopics.map(t => createElement('option', { key: t, value: t }, t))
               ),
               !isExamLevel && createElement('input', {
                 type: 'text',
-                placeholder: 'Hoặc nhập chủ đề của bạn...',
+                placeholder: 'Or enter your own topic...',
                 value: testConfig.topic,
                 onChange: (e) => setTestConfig({ ...testConfig, topic: e.target.value }),
                 className: 'mt-2 w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500'
@@ -890,7 +930,7 @@
             ),
             createElement('div', { className: 'mb-6 grid grid-cols-2 gap-4' },
                 createElement('div', null,
-                    createElement('label', { className: `block text-gray-700 font-bold mb-2 ${isExamLevel ? 'opacity-50' : ''}` }, 'Số câu hỏi:'),
+                    createElement('label', { className: `block text-gray-700 font-bold mb-2 ${isExamLevel ? 'opacity-50' : ''}` }, 'Number of Questions:'),
                     createElement('input', {
                         type: 'number',
                         value: testConfig.numQuestions,
@@ -900,10 +940,10 @@
                         disabled: isExamLevel,
                         className: 'w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-200'
                     }),
-                    isExamLevel && createElement('p', { className: 'text-sm text-gray-500 mt-1' }, `Số câu hỏi cố định cho ${testConfig.level}: ${testConfig.numQuestions} câu.`)
+                    isExamLevel && createElement('p', { className: 'text-sm text-gray-500 mt-1' }, `Fixed number of questions for ${testConfig.level}: ${testConfig.numQuestions} questions.`)
                 ),
                 createElement('div', null,
-                    createElement('label', { className: 'block text-gray-700 font-bold mb-2' }, 'Thời gian (phút):'),
+                    createElement('label', { className: 'block text-gray-700 font-bold mb-2' }, 'Time (minutes):'),
                     createElement('input', {
                         type: 'number',
                         value: testConfig.timeLimit > 0 ? testConfig.timeLimit : '',
@@ -912,7 +952,7 @@
                         disabled: testConfig.level === 'IELTS',
                         className: 'w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-200'
                     }),
-                    testConfig.level === 'IELTS' && createElement('p', { className: 'text-sm text-gray-500 mt-1' }, `Thời gian cố định cho IELTS: ${testConfig.timeLimit} phút.`)
+                    testConfig.level === 'IELTS' && createElement('p', { className: 'text-sm text-gray-500 mt-1' }, `Fixed time for IELTS: ${testConfig.timeLimit} minutes.`)
                 )
             ),
             createElement('div', { className: 'text-right' },
@@ -920,22 +960,50 @@
                 onClick: testConfig.level === 'IELTS' ? handleStartIELTSReading : handleStartRegularTest,
                 disabled: (testConfig.level !== 'TOEIC' && testConfig.level !== 'IELTS' && !testConfig.topic) || loading || (testConfig.level === 'TOEIC' && !testConfig.toeicPart),
                 className: 'px-6 py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-md hover:bg-indigo-700 transition duration-300 disabled:opacity-50'
-              }, loading ? 'Đang tạo bài...' : 'Tạo bài kiểm tra')
+              }, loading ? 'Creating test...' : 'Create Test')
             )
           ),
-          loading && createElement('div', { className: 'flex items-center justify-center p-8 text-lg text-gray-500' }, 'Đang tạo câu hỏi...'),
+          isTestRunning && questions.length > 0 && !showResults && createElement('div', null,
+              questions.map((q, qIndex) => (
+                  createElement('div', { key: q.id, className: 'mb-6 p-4 bg-gray-50 rounded-lg shadow-sm' },
+                      createElement('p', { className: 'font-semibold text-gray-800 mb-2' }, `${qIndex + 1}. ${q.questionText}`),
+                      createElement('div', { className: 'space-y-2' },
+                          q.options.map((option, oIndex) => (
+                              createElement('label', { key: oIndex, className: 'flex items-center text-gray-700' },
+                                  createElement('input', {
+                                      type: 'radio',
+                                      name: `q-${q.id}`,
+                                      value: option,
+                                      checked: userAnswers[q.id] === option,
+                                      onChange: (e) => handleAnswerChange(q.id, e.target.value),
+                                      className: 'mr-2'
+                                  }),
+                                  createElement('span', null, option)
+                              )
+                          ))
+                      )
+                  )
+              )),
+              createElement('div', { className: 'mt-6 text-right' },
+                  createElement('button', {
+                      onClick: handleSubmitTest,
+                      className: 'px-6 py-3 bg-green-600 text-white font-bold rounded-xl shadow-md hover:bg-green-700 transition duration-300',
+                  }, 'Submit Test')
+              )
+          ),
+          loading && createElement('div', { className: 'flex items-center justify-center p-8 text-lg text-gray-500' }, 'Generating questions...'),
 
           // Display results after test submission
           showResults && createElement('div', null,
-            createElement('h3', { className: 'text-3xl font-bold text-center mb-4' }, `Kết quả của bạn: ${score}/${questions.length}`),
+            createElement('h3', { className: 'text-3xl font-bold text-center mb-4' }, `Your Score: ${score}/${questions.length}`),
             createElement('div', { className: 'space-y-4' },
               questions.map((q, qIndex) => (
                 createElement('div', { key: q.id, className: 'p-4 rounded-lg shadow-sm border', style: { borderColor: userAnswers[q.id]?.toLowerCase() === q.correctAnswer?.toLowerCase() ? '#10B981' : '#EF4444' } },
                   createElement('p', { className: 'font-semibold mb-2', style: { color: userAnswers[q.id]?.toLowerCase() === q.correctAnswer?.toLowerCase() ? '#059669' : '#DC2626' } },
                     `${qIndex + 1}. ${q.questionText}`
                   ),
-                  createElement('p', { className: 'text-gray-700' }, `Đáp án của bạn: ${userAnswers[q.id] || 'Không trả lời'}`),
-                  userAnswers[q.id]?.toLowerCase() !== q.correctAnswer?.toLowerCase() && createElement('p', { className: 'text-gray-700' }, `Đáp án đúng: ${q.correctAnswer}`)
+                  createElement('p', { className: 'text-gray-700' }, `Your answer: ${userAnswers[q.id] || 'Not answered'}`),
+                  userAnswers[q.id]?.toLowerCase() !== q.correctAnswer?.toLowerCase() && createElement('p', { className: 'text-gray-700' }, `Correct answer: ${q.correctAnswer}`)
                 )
               ))
             ),
@@ -943,7 +1011,7 @@
               createElement('button', {
                 onClick: () => handleSaveIncorrectAnswers(incorrectAnswers),
                 className: 'px-6 py-3 bg-yellow-600 text-white font-bold rounded-xl shadow-md hover:bg-yellow-700 transition duration-300'
-              }, 'Lưu các câu trả lời sai')
+              }, 'Save Incorrect Answers')
             ),
             createElement('div', { className: 'mt-6 text-right' },
                 createElement('button', {
@@ -956,7 +1024,7 @@
                     setTimerValue(0);
                   },
                   className: 'px-6 py-3 bg-gray-600 text-white font-bold rounded-xl shadow-md hover:bg-gray-700 transition duration-300'
-                }, 'Làm bài mới')
+                }, 'Start New Test')
               )
           )
         );
@@ -965,35 +1033,35 @@
       // Writing test UI
       if (testType === 'writing') {
         return createElement('div', null,
-          createElement('h2', { className: 'text-4xl font-bold text-gray-800 mb-6 text-center' }, 'Viết luận'),
+          createElement('h2', { className: 'text-4xl font-bold text-gray-800 mb-6 text-center' }, 'Essay Writing'),
           createElement('div', { className: 'flex justify-between items-center mb-4' },
-            writingTopic && createElement('p', { className: 'text-lg font-semibold text-gray-700' }, writingTopic),
+            writingTopic && createElement('p', { className: 'text-lg font-semibold text-gray-700' }, `Topic: ${writingTopic}`),
             createElement('button', {
               onClick: handleGenerateWritingTopic,
               className: 'px-4 py-2 bg-purple-600 text-white font-bold rounded-full shadow-md hover:bg-purple-700 transition duration-300 disabled:opacity-50',
               disabled: loading
-            }, loading ? 'Đang tạo...' : 'Tạo chủ đề ngẫu nhiên')
+            }, loading ? 'Generating...' : 'Generate a random topic ✨')
           ),
           createElement('textarea', {
             value: writingText,
             onChange: (e) => setWritingText(e.target.value),
             className: 'w-full p-4 text-lg rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500',
             rows: '15',
-            placeholder: 'Viết bài luận của bạn tại đây...'
+            placeholder: 'Write your essay here...'
           }),
           createElement('div', { className: 'mt-6 text-right space-x-2' },
             createElement('button', {
               onClick: handleGetWritingFeedback,
               className: 'px-6 py-3 bg-green-600 text-white font-bold rounded-xl shadow-md hover:bg-green-700 transition duration-300 disabled:opacity-50',
               disabled: !writingText.trim() || loading
-            }, loading ? 'Đang phân tích...' : 'Lấy phản hồi'),
+            }, loading ? 'Analyzing...' : 'Get Feedback ✨'),
             writingFeedback && createElement('button', {
               onClick: handleSaveWritingFeedback,
               className: 'px-6 py-3 bg-blue-600 text-white font-bold rounded-xl shadow-md hover:bg-blue-700 transition duration-300'
-            }, 'Lưu phản hồi vào thư viện')
+            }, 'Save feedback to library')
           ),
           writingFeedback && createElement('div', { className: 'mt-8 bg-gray-50 p-6 rounded-xl shadow-inner border border-gray-200' },
-            createElement('h3', { className: 'text-2xl font-bold text-gray-800 mb-4' }, 'Phản hồi chi tiết:'),
+            createElement('h3', { className: 'text-2xl font-bold text-gray-800 mb-4' }, 'Detailed Feedback:'),
             createElement('p', { className: 'whitespace-pre-wrap text-gray-700' }, writingFeedback)
           ),
           createElement('div', { className: 'mt-6 text-right' },
@@ -1005,7 +1073,7 @@
                   setWritingTopic('');
                 },
                 className: 'px-6 py-3 bg-gray-600 text-white font-bold rounded-xl shadow-md hover:bg-gray-700 transition duration-300'
-              }, 'Làm bài mới')
+              }, 'Start New Test')
             )
         );
       }
@@ -1040,16 +1108,16 @@
       };
 
       return createElement('div', { className: 'flex flex-col h-full' },
-        createElement('h2', { className: 'text-4xl font-bold text-gray-800 mb-6 text-center' }, 'Tạo một bài học mới'),
+        createElement('h2', { className: 'text-4xl font-bold text-gray-800 mb-6 text-center' }, 'Create a New Lesson'),
         createElement('input', {
           type: 'text',
-          placeholder: 'Tiêu đề bài học...',
+          placeholder: 'Lesson Title...',
           value: title,
           onChange: (e) => setTitle(e.target.value),
           className: 'w-full p-4 mb-4 text-xl rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500'
         }),
         createElement('textarea', {
-          placeholder: 'Viết bài học của bạn tại đây...',
+          placeholder: 'Write your lesson content here...',
           value: content,
           onChange: (e) => setContent(e.target.value),
           className: 'flex-grow w-full p-4 text-lg rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 h-96',
@@ -1059,7 +1127,7 @@
           createElement('button', {
             onClick: handleSave,
             className: 'px-6 py-3 bg-blue-600 text-white font-bold rounded-xl shadow-md hover:bg-blue-700 transition duration-300'
-          }, 'Lưu bài học')
+          }, 'Save Lesson')
         )
       );
     };
@@ -1129,20 +1197,20 @@
       };
 
       return createElement('div', null,
-        createElement('h2', { className: 'text-4xl font-bold text-gray-800 mb-6 text-center' }, 'Tạo Flashcard'),
-        createElement('p', { className: 'text-lg text-gray-600 mb-4 text-center' }, 'Thêm từ vựng và sử dụng AI để tạo ví dụ và hình ảnh.'),
+        createElement('h2', { className: 'text-4xl font-bold text-gray-800 mb-6 text-center' }, 'Create Flashcards'),
+        createElement('p', { className: 'text-lg text-gray-600 mb-4 text-center' }, 'Add a word and use AI to generate an example and an image.'),
         createElement('div', { className: 'grid md:grid-cols-2 gap-6' },
           createElement('div', { className: 'col-span-1 space-y-4' },
             createElement('input', {
               type: 'text',
-              placeholder: 'Từ vựng...',
+              placeholder: 'Word...',
               value: word,
               onChange: (e) => setWord(e.target.value),
               className: 'w-full p-4 text-lg rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500'
             }),
             createElement('input', {
               type: 'text',
-              placeholder: 'Nghĩa...',
+              placeholder: 'Meaning...',
               value: meaning,
               onChange: (e) => setMeaning(e.target.value),
               className: 'w-full p-4 text-lg rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500'
@@ -1152,18 +1220,18 @@
                 onClick: generateWithAI,
                 className: 'px-6 py-3 bg-purple-600 text-white font-bold rounded-xl shadow-md hover:bg-purple-700 transition duration-300 disabled:opacity-50',
                 disabled: !word || !meaning || loading
-              }, loading ? 'Đang tạo...' : 'Tạo bằng AI')
+              }, loading ? 'Generating...' : 'Generate with AI ✨')
             )
           ),
           createElement('div', { className: 'col-span-1' },
             loading ? (
-              createElement('div', { className: 'flex items-center justify-center h-full text-lg text-gray-500' }, 'Đang tạo nội dung...')
+              createElement('div', { className: 'flex items-center justify-center h-full text-lg text-gray-500' }, 'Generating content...')
             ) : (
               createElement('div', { className: 'bg-gray-50 p-6 rounded-xl shadow-md flex flex-col items-center' },
                 createElement('div', { className: 'w-64 h-64 mb-4 rounded-lg overflow-hidden border border-gray-200' },
-                  imageUrl ? createElement('img', { src: imageUrl, alt: 'Hình ảnh minh họa', className: 'w-full h-full object-cover' }) : createElement('div', { className: 'w-full h-full bg-gray-200 flex items-center justify-center text-gray-500' }, 'Hình ảnh sẽ xuất hiện tại đây')
+                  imageUrl ? createElement('img', { src: imageUrl, alt: 'Illustrative image', className: 'w-full h-full object-cover' }) : createElement('div', { className: 'w-full h-full bg-gray-200 flex items-center justify-center text-gray-500' }, 'Image will appear here')
                 ),
-                createElement('p', { className: 'text-lg text-gray-700 text-center' }, example || 'Một câu ví dụ sẽ xuất hiện tại đây.')
+                createElement('p', { className: 'text-lg text-gray-700 text-center' }, example || 'An example sentence will appear here.')
               )
             )
           )
@@ -1173,7 +1241,7 @@
             onClick: handleSave,
             className: 'px-6 py-3 bg-blue-600 text-white font-bold rounded-xl shadow-md hover:bg-blue-700 transition duration-300 disabled:opacity-50',
             disabled: !word || !meaning || loading
-          }, 'Lưu Flashcard')
+          }, 'Save Flashcard')
         )
       );
     };
