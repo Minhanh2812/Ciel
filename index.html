@@ -445,7 +445,7 @@
       const toeicParts = ['Part 5', 'Part 6', 'Part 7'];
       const topicsFromLessons = lessons.map(l => l.title);
       const allTopics = ['English Grammar', 'Vocabulary', 'Science', 'History'].concat(topicsFromLessons);
-      
+
       // Timer effect hook
       useEffect(() => {
         let timer;
@@ -458,7 +458,8 @@
             } else if (timerValue === 0) {
               handleSubmitTest();
             }
-          } else { // Stopwatch
+          } else {
+            // Stopwatch
             timer = setInterval(() => {
               setTimerValue(prevTime => prevTime + 1);
             }, 1000);
@@ -473,6 +474,65 @@
         const remainingSeconds = seconds % 60;
         return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
       };
+      
+      // Function to handle API calls with exponential backoff
+      const callGeminiApi = async (userPrompt, callback, onLoading, responseSchema = null, model = 'gemini-2.5-flash-preview-05-20') => {
+        onLoading(true);
+        let retries = 0;
+        const maxRetries = 5;
+        const baseDelay = 1000;
+        const apiKey = "DÁN KHÓA API CỦA BẠN VÀO ĐÂY";
+
+        if (!apiKey || apiKey === "DÁN KHÓA API CỦA BẠN VÀO ĐÂY") {
+          console.error("Lỗi: Không tìm thấy khóa API. Vui lòng thêm khóa API của bạn.");
+          onLoading(false);
+          return;
+        }
+
+        while (retries < maxRetries) {
+          try {
+            const chatHistory = [{ role: "user", parts: [{ text: userPrompt }] }];
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+            
+            const payload = { contents: chatHistory };
+            if (responseSchema) {
+              payload.generationConfig = { responseMimeType: "application/json", responseSchema };
+            }
+
+            const response = await fetch(apiUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+              throw new Error(`API call failed with status: ${response.status}`);
+            }
+
+            const result = await response.json();
+            
+            if (result.candidates && result.candidates.length > 0 &&
+              result.candidates[0].content && result.candidates[0].content.parts &&
+              result.candidates[0].content.parts.length > 0) {
+              const content = result.candidates[0].content.parts[0].text;
+              callback(content);
+              break;
+            } else {
+              throw new Error("Không nhận được nội dung hợp lệ từ API.");
+            }
+          } catch (e) {
+            console.error("Lỗi khi gọi API:", e);
+            retries++;
+            if (retries < maxRetries) {
+              const delay = baseDelay * (2 ** (retries - 1));
+              console.log(`Retrying in ${delay}ms...`);
+              await new Promise(res => setTimeout(res, delay));
+            }
+          } finally {
+            onLoading(false);
+          }
+        }
+      };
 
       // Level change handler
       const handleLevelChange = (e) => {
@@ -480,7 +540,7 @@
         let newNumQuestions = testConfig.numQuestions;
         let newToeicPart = testConfig.toeicPart;
         let newTimeLimit = testConfig.timeLimit;
-
+        
         if (newLevel === 'TOEIC') {
           newToeicPart = 'Part 5';
           newNumQuestions = 30;
@@ -497,183 +557,77 @@
 
       // TOEIC Part change handler
       const handleToeicPartChange = (e) => {
-          const newPart = e.target.value;
-          let newNumQuestions;
-          switch (newPart) {
-              case 'Part 5':
-                  newNumQuestions = 30;
-                  break;
-              case 'Part 6':
-                  newNumQuestions = 16;
-                  break;
-              case 'Part 7':
-                  newNumQuestions = 54;
-                  break;
-          }
-          setTestConfig({ ...testConfig, toeicPart: newPart, numQuestions: newNumQuestions });
+        const newPart = e.target.value;
+        let newNumQuestions;
+        switch (newPart) {
+          case 'Part 5': newNumQuestions = 30; break;
+          case 'Part 6': newNumQuestions = 16; break;
+          case 'Part 7': newNumQuestions = 54; break;
+        }
+        setTestConfig({ ...testConfig, toeicPart: newPart, numQuestions: newNumQuestions });
       };
-
-      // Handle start of multiple choice test (non-IELTS/TOEIC)
+      
       const handleStartRegularTest = async () => {
         if (!testConfig.topic || !testConfig.numQuestions || loading) return;
-        setLoading(true);
 
+        setLoading(true);
         const prompt = `Create a ${testConfig.numQuestions} question multiple-choice test on the topic of "${testConfig.topic}" at the CEFR level ${testConfig.level}. Each question should have a question text, four options, and a correct answer. The output should be a JSON array.`;
         const responseSchema = {
-            type: "ARRAY",
-            items: {
-                type: "OBJECT",
-                properties: {
-                    "questionText": { "type": "STRING" },
-                    "options": {
-                        "type": "ARRAY",
-                        "items": { "type": "STRING" }
-                    },
-                    "correctAnswer": { "type": "STRING" }
-                },
-                "propertyOrdering": ["questionText", "options", "correctAnswer"]
-            }
-        };
-
-        setQuestions([]);
-        setUserAnswers({});
-        setShowResults(false);
-
-        if (testConfig.timeLimit > 0) {
-            setIsCountdown(true);
-            setTimerValue(testConfig.timeLimit * 60);
-        } else {
-            setIsCountdown(false);
-            setTimerValue(0);
-        }
-        setIsTestRunning(true);
-
-        try {
-            const payload = {
-                contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: {
-                    responseMimeType: "application/json",
-                    responseSchema: responseSchema
-                }
-            };
-
-            const apiKey = "";
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            const result = await response.json();
-            const json = result.candidates?.[0]?.content?.parts?.[0]?.text;
-            const parsedData = JSON.parse(json);
-            const questionsWithIds = parsedData.map((q, index) => ({ ...q, id: `q${index + 1}` }));
-            setQuestions(questionsWithIds);
-        } catch (error) {
-            console.error("Error generating multiple choice questions:", error);
-            setQuestions([]);
-            setIsTestRunning(false);
-            setTimerValue(0);
-        } finally {
-            setLoading(false);
-        }
-      };
-
-      // New function to handle starting the IELTS reading test
-      const handleStartIELTSReading = async () => {
-        if (loading) return;
-        setLoading(true);
-
-        const prompt = `Create an IELTS Reading test with 3 passages and 40 questions of various types. The test should be for the ${testConfig.ieltsType} module. The question types should be a mix of:
-        - Multiple Choice
-        - True/False/Not Given
-        - Fill in the blanks
-        - Matching Headings (provide a list of headings to match)
-        - Short Answer Questions.
-        Each passage should be a self-contained object. The output must be a single JSON object with a 'passages' array. Each passage object should have a 'title', 'text', and a 'questions' array. Each question object should have a 'type', 'questionText', and a 'correctAnswer'. For 'fill_in_the_blanks' questions, the questionText should contain a blank space to be filled. For 'matching_headings', the passage should contain section titles and the question object should contain a list of headings to match.`;
-
-        const responseSchema = {
-          type: "OBJECT",
-          properties: {
-            "passages": {
-              "type": "ARRAY",
-              "items": {
-                "type": "OBJECT",
-                "properties": {
-                  "title": { "type": "STRING" },
-                  "text": { "type": "STRING" },
-                  "questions": {
-                    "type": "ARRAY",
-                    "items": {
-                      "type": "OBJECT",
-                      "properties": {
-                        "type": { "type": "STRING" }, // e.g., 'multiple_choice', 'true_false_not_given'
-                        "questionText": { "type": "STRING" },
-                        "options": {
-                          "type": "ARRAY",
-                          "items": { "type": "STRING" }
-                        },
-                        "correctAnswer": { "type": "STRING" }
-                      }
-                    }
-                  }
-                }
-              }
-            }
+          type: "ARRAY",
+          items: {
+            type: "OBJECT",
+            properties: {
+              "questionText": { "type": "STRING" },
+              "options": { "type": "ARRAY", "items": { "type": "STRING" } },
+              "correctAnswer": { "type": "STRING" }
+            },
+            "propertyOrdering": ["questionText", "options", "correctAnswer"]
           }
         };
 
-        setIeltsPassages([]);
-        setQuestions([]);
-        setUserAnswers({});
-        setShowResults(false);
-        setTimerValue(60 * 60); // 60 minutes
-        setIsCountdown(true);
-        setIsTestRunning(true);
-
-        try {
-            const payload = {
-                contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: {
-                    responseMimeType: "application/json",
-                    responseSchema: responseSchema
-                }
-            };
-
-            const apiKey = "";
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            const result = await response.json();
-            const json = result.candidates?.[0]?.content?.parts?.[0]?.text;
-            const parsedData = JSON.parse(json);
-            setIeltsPassages(parsedData.passages);
-
-            let allIeltsQuestions = [];
-            let questionNumber = 1;
-            parsedData.passages.forEach((passage, passageIndex) => {
-              passage.questions.forEach(q => {
-                allIeltsQuestions.push({...q, id: `q${questionNumber}`, passageId: passageIndex });
-                questionNumber++;
-              });
-            });
-            setQuestions(allIeltsQuestions);
-        } catch (error) {
-            console.error("Error generating IELTS questions:", error);
-            setIeltsPassages([]);
-            setQuestions([]);
-            setIsTestRunning(false);
+        const callback = (content) => {
+          try {
+            const parsedQuestions = JSON.parse(content);
+            setQuestions(parsedQuestions);
+            setShowResults(false);
+            setUserAnswers({});
+            setIsTestRunning(true);
             setTimerValue(0);
-        } finally {
-            setLoading(false);
-        }
+            setIsCountdown(false);
+          } catch (e) {
+            console.error("Failed to parse JSON response:", e);
+            alert("Failed to create test. Please try again.");
+          }
+        };
+
+        callGeminiApi(prompt, callback, setLoading, responseSchema);
       };
 
-      const handleAnswerChange = (questionId, value) => {
-        setUserAnswers(prev => ({ ...prev, [questionId]: value }));
+      const handleStartWritingTest = async () => {
+        if (!testConfig.topic || loading) return;
+        setLoading(true);
+
+        const prompt = `Generate an essay topic for an English writing test at the CEFR level ${testConfig.level} on the topic of "${testConfig.topic}". The topic should be a clear question or statement. For example: 'Write an essay about the advantages and disadvantages of remote work.'`;
+        const callback = (topic) => {
+          setWritingTopic(topic);
+          setWritingText('');
+          setWritingFeedback(null);
+          setIsTestRunning(true);
+          setTimerValue(0);
+          setIsCountdown(false);
+        };
+        callGeminiApi(prompt, callback, setLoading);
+      };
+
+      // Function to get feedback for the writing test
+      const handleGetWritingFeedback = async () => {
+        if (!writingText || loading) return;
+        setLoading(true);
+        const feedbackPrompt = `Please provide constructive feedback on the following English essay written by an intermediate learner. Focus on grammar, spelling, sentence structure, and overall coherence. Provide specific suggestions for improvement. Highlight errors and explain why they are wrong. Present the feedback in a clear, formatted way. Here is the essay: \n\n${writingText}`;
+        const callback = (feedback) => {
+          setWritingFeedback(feedback);
+        };
+        callGeminiApi(feedbackPrompt, callback, setLoading);
       };
 
       const handleSubmitTest = () => {
@@ -681,602 +635,404 @@
         setShowResults(true);
       };
 
-      const getScore = () => {
+      const scoreTest = () => {
         let score = 0;
-        const incorrectAnswers = [];
-        questions.forEach((q) => {
-            const userAnswer = userAnswers[q.id];
-            if (userAnswer && userAnswer.trim().toLowerCase() === q.correctAnswer.trim().toLowerCase()) {
-                score++;
-            } else {
-                incorrectAnswers.push({
-                    questionText: q.questionText,
-                    userAnswer: userAnswer || 'Not answered',
-                    correctAnswer: q.correctAnswer,
-                });
-            }
+        questions.forEach((q, index) => {
+          if (userAnswers[index] === q.correctAnswer) {
+            score++;
+          }
         });
-        return { score, incorrectAnswers };
+        return score;
       };
 
-      const handleSaveIncorrectAnswers = (incorrectAnswers) => {
-        const title = `Incorrect Answers from Test (${new Date().toLocaleDateString()})`;
-        let content = "Incorrect answers:\n";
-        incorrectAnswers.forEach((item, index) => {
-          content += `\nQuestion ${index + 1}: ${item.questionText}\n`;
-          content += `Your answer: ${item.userAnswer}\n`;
-          content += `Correct answer: ${item.correctAnswer}\n`;
-        });
-        onSaveItem(title, content);
+      const handleChangeAnswer = (e, index) => {
+        setUserAnswers({ ...userAnswers, [index]: e.target.value });
       };
 
-      const handleGetWritingFeedback = async () => {
-        if (!writingText.trim() || loading) return;
-        setLoading(true);
-        setWritingFeedback(null);
-        try {
-          const prompt = `Analyze the following essay and provide detailed feedback in English. Correct grammar and spelling errors, suggest better vocabulary, and comment on the sentence structure.
-          Essay: "${writingText}"
-          `;
-          const chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
-          const payload = { contents: chatHistory };
-          const apiKey = "";
-          const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-          const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          });
-          const result = await response.json();
-          setWritingFeedback(result.candidates?.[0]?.content?.parts?.[0]?.text);
-        } catch (error) {
-          console.error("Error getting writing feedback:", error);
-          setWritingFeedback("An error occurred while fetching feedback. Please try again.");
-        } finally {
-          setLoading(false);
-        }
-      };
-
-      const handleGenerateWritingTopic = async () => {
-        if (loading) return;
-        setLoading(true);
-        setWritingTopic('');
-        try {
-          const prompt = `Provide a random topic for a 250-word English essay. The topic should be suitable for a B1 to C2 level. Example: "The impact of social media on mental health." Return only the topic, no other text.`;
-          const chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
-          const payload = { contents: chatHistory };
-          const apiKey = "";
-          const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-          const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          });
-          const result = await response.json();
-          setWritingTopic(result.candidates?.[0]?.content?.parts?.[0]?.text.trim());
-        } catch (error) {
-          console.error("Error generating writing topic:", error);
-          setWritingTopic("Failed to generate a topic. Please try again.");
-        } finally {
-          setLoading(false);
-        }
-      };
-
-      const handleSaveWritingFeedback = () => {
-        if (writingFeedback) {
-          const title = `Feedback for Essay: "${writingTopic || 'Custom Topic'}"`;
-          const content = `Your Essay:\n${writingText}\n\nDetailed Feedback:\n${writingFeedback}`;
-          onSaveItem(title, content);
-        }
-      };
-
-      // UI to select test type
-      if (!testType) {
-        return createElement('div', { className: 'text-center' },
-          createElement('h2', { className: 'text-4xl font-bold text-gray-800 mb-6' }, 'Choose a Test Type'),
-          createElement('div', { className: 'space-y-4' },
+      const TestSetup = () => {
+        return createElement('div', { className: 'space-y-4' },
+          createElement('h3', { className: 'text-2xl font-bold text-gray-800' }, 'Configure Your Test'),
+          createElement('div', { className: 'flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-4' },
+            createElement('select', {
+              className: 'p-2 border rounded-md w-full',
+              value: testConfig.level,
+              onChange: handleLevelChange
+            }, levels.map(level => createElement('option', { key: level, value: level }, level))),
+            testConfig.level === 'TOEIC' && createElement('select', {
+              className: 'p-2 border rounded-md w-full',
+              value: testConfig.toeicPart,
+              onChange: handleToeicPartChange
+            }, toeicParts.map(part => createElement('option', { key: part, value: part }, part))),
+            testConfig.level !== 'TOEIC' && testConfig.level !== 'IELTS' && createElement('select', {
+              className: 'p-2 border rounded-md w-full',
+              value: testConfig.topic,
+              onChange: (e) => setTestConfig({ ...testConfig, topic: e.target.value })
+            },
+              createElement('option', { value: '' }, 'Select a Topic'),
+              allTopics.map(topic => createElement('option', { key: topic, value: topic }, topic))
+            )
+          ),
+          createElement('div', { className: 'flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4' },
             createElement('button', {
-              onClick: () => setTestType('multiple-choice'),
-              className: 'w-full md:w-2/3 lg:w-1/2 block mx-auto px-6 py-4 bg-blue-600 text-white text-xl font-bold rounded-xl shadow-md hover:bg-blue-700 transition duration-300 transform hover:scale-105'
-            }, 'Multiple Choice Test'),
+              onClick: () => { setTestType('multiple-choice'); handleStartRegularTest(); },
+              disabled: loading || !testConfig.topic || testConfig.level === 'TOEIC' || testConfig.level === 'IELTS',
+              className: 'flex-1 px-4 py-3 bg-blue-600 text-white font-bold rounded-xl shadow-md hover:bg-blue-700 transition duration-300 disabled:opacity-50'
+            }, 'Start Multiple Choice'),
             createElement('button', {
-              onClick: () => setTestType('writing'),
-              className: 'w-full md:w-2/3 lg:w-1/2 block mx-auto px-6 py-4 bg-green-600 text-white text-xl font-bold rounded-xl shadow-md hover:bg-green-700 transition duration-300 transform hover:scale-105'
-            }, 'Essay Writing')
+              onClick: () => { setTestType('writing'); handleStartWritingTest(); },
+              disabled: loading || !testConfig.topic,
+              className: 'flex-1 px-4 py-3 bg-green-600 text-white font-bold rounded-xl shadow-md hover:bg-green-700 transition duration-300 disabled:opacity-50'
+            }, 'Start Writing Test')
+          ),
+          loading && createElement('div', { className: 'text-center text-gray-500' }, 'Generating test... please wait.')
+        );
+      };
+
+      const WritingTest = () => {
+        return createElement('div', null,
+          writingTopic && createElement('div', { className: 'p-4 bg-gray-50 rounded-lg mb-4' },
+            createElement('h4', { className: 'text-xl font-semibold mb-2' }, 'Writing Topic:'),
+            createElement('p', { className: 'text-lg text-gray-700' }, writingTopic)
+          ),
+          createElement('div', { className: 'text-right text-sm text-gray-500 mb-2' }, `Time elapsed: ${formatTime(timerValue)}`),
+          createElement('div', { className: 'editor-container p-4 min-h-[300px] bg-white text-gray-800', contentEditable: true, onInput: (e) => setWritingText(e.target.innerHTML), dangerouslySetInnerHTML: { __html: writingText } }),
+          createElement('div', { className: 'mt-4 flex justify-between items-center' },
+            createElement('button', {
+              onClick: () => {
+                if (window.confirm("Are you sure you want to end the test and get feedback?")) {
+                  setIsTestRunning(false);
+                  handleGetWritingFeedback();
+                }
+              },
+              className: 'px-4 py-2 bg-red-500 text-white font-bold rounded-xl shadow-md hover:bg-red-600 transition duration-300 disabled:opacity-50',
+              disabled: loading || !writingText
+            }, 'Submit for Feedback'),
+            loading && createElement('span', { className: 'text-gray-500' }, 'Generating feedback...'),
+          ),
+          writingFeedback && createElement('div', { className: 'mt-6 p-4 bg-yellow-50 rounded-xl shadow-inner' },
+            createElement('h4', { className: 'text-xl font-bold text-gray-800 mb-2' }, 'AI Feedback:'),
+            createElement('div', { className: 'prose max-w-none text-gray-700', dangerouslySetInnerHTML: { __html: writingFeedback } })
           )
         );
-      }
+      };
 
-      // Main Test UI
-      if (testType === 'multiple-choice') {
-        const { score, incorrectAnswers } = showResults ? getScore() : { score: 0, incorrectAnswers: [] };
-        const isExamLevel = testConfig.level === 'TOEIC' || testConfig.level === 'IELTS';
-
-        // IELTS Test View
-        if (isTestRunning && testConfig.level === 'IELTS') {
-            const currentPassage = ieltsPassages[questions.find(q => !userAnswers[q.id])?.passageId || 0];
-            return createElement('div', { className: 'flex h-full' },
-                // Passage column
-                createElement('div', { className: 'w-1/2 overflow-y-auto pr-4 border-r border-gray-300' },
-                    currentPassage && createElement('div', null,
-                        createElement('h3', { className: 'text-2xl font-bold text-gray-800 mb-2' }, `Passage ${currentPassage.passageId + 1}: ${currentPassage.title}`),
-                        createElement('p', { className: 'whitespace-pre-wrap text-gray-700' }, currentPassage.text)
-                    )
-                ),
-                // Questions column
-                createElement('div', { className: 'w-1/2 overflow-y-auto pl-4' },
-                    createElement('div', { className: 'sticky top-0 bg-white bg-opacity-90 p-2 z-10' },
-                        createElement('span', { className: 'text-lg font-bold text-gray-800' }, `Time remaining: ${formatTime(timerValue)}`)
-                    ),
-                    questions.map((q, qIndex) => {
-                        const isCurrentPassageQuestion = q.passageId === currentPassage.passageId;
-                        if (!isCurrentPassageQuestion) return null;
-
-                        // Render question based on type
-                        if (q.type === 'multiple_choice') {
-                            return createElement('div', { key: q.id, className: 'mb-4' },
-                                createElement('p', { className: 'font-semibold text-gray-800 mb-2' }, `${qIndex + 1}. ${q.questionText}`),
-                                ...q.options.map((option, oIndex) => createElement('label', { key: oIndex, className: 'block' },
-                                    createElement('input', {
-                                        type: 'radio',
-                                        name: `q-${q.id}`,
-                                        value: option,
-                                        checked: userAnswers[q.id] === option,
-                                        onChange: (e) => handleAnswerChange(q.id, e.target.value)
-                                    }),
-                                    createElement('span', { className: 'ml-2' }, option)
-                                ))
-                            );
-                        } else if (q.type === 'fill_in_the_blanks') {
-                            return createElement('div', { key: q.id, className: 'mb-4' },
-                                createElement('p', { className: 'font-semibold text-gray-800 mb-2' }, `${qIndex + 1}. ${q.questionText}`),
-                                createElement('input', {
-                                    type: 'text',
-                                    value: userAnswers[q.id] || '',
-                                    onChange: (e) => handleAnswerChange(q.id, e.target.value),
-                                    className: 'border rounded p-2 w-full'
-                                })
-                            );
-                        } else if (q.type === 'true_false_not_given') {
-                            return createElement('div', { key: q.id, className: 'mb-4' },
-                                createElement('p', { className: 'font-semibold text-gray-800 mb-2' }, `${qIndex + 1}. ${q.questionText}`),
-                                ...['True', 'False', 'Not Given'].map(option => createElement('label', { key: option, className: 'block' },
-                                    createElement('input', {
-                                        type: 'radio',
-                                        name: `q-${q.id}`,
-                                        value: option,
-                                        checked: userAnswers[q.id] === option,
-                                        onChange: (e) => handleAnswerChange(q.id, e.target.value)
-                                    }),
-                                    createElement('span', { className: 'ml-2' }, option)
-                                ))
-                            );
-                        } else if (q.type === 'matching_headings') {
-                            return createElement('div', { key: q.id, className: 'mb-4' },
-                                createElement('p', { className: 'font-semibold text-gray-800 mb-2' }, `${qIndex + 1}. ${q.questionText}`),
-                                createElement('p', { className: 'text-sm text-gray-600 mb-2' }, 'Please match the headings to the paragraphs.'),
-                                createElement('input', {
-                                    type: 'text',
-                                    value: userAnswers[q.id] || '',
-                                    onChange: (e) => handleAnswerChange(q.id, e.target.value),
-                                    className: 'border rounded p-2 w-full'
-                                })
-                            );
-                        } else if (q.type === 'short_answer') {
-                            return createElement('div', { key: q.id, className: 'mb-4' },
-                                createElement('p', { className: 'font-semibold text-gray-800 mb-2' }, `${qIndex + 1}. ${q.questionText}`),
-                                createElement('input', {
-                                    type: 'text',
-                                    value: userAnswers[q.id] || '',
-                                    onChange: (e) => handleAnswerChange(q.id, e.target.value),
-                                    className: 'border rounded p-2 w-full'
-                                })
-                            );
-                        }
-                    }),
-                    createElement('div', { className: 'mt-6 text-right' },
-                        createElement('button', {
-                            onClick: handleSubmitTest,
-                            className: 'px-6 py-3 bg-green-600 text-white font-bold rounded-xl shadow-md hover:bg-green-700 transition duration-300',
-                        }, 'Submit Test')
-                    )
-                )
-            );
-        }
-
-        // Configuration View for all tests
+      const MultipleChoiceTest = () => {
         return createElement('div', null,
-          createElement('h2', { className: 'text-4xl font-bold text-gray-800 mb-6 text-center' }, 'Multiple Choice Test'),
-          isTestRunning && createElement('div', { className: 'absolute top-4 right-4 bg-white bg-opacity-80 p-2 rounded-xl shadow-md' },
-            createElement('span', { className: 'text-lg font-bold text-gray-800' },
-              isCountdown ? `Time remaining: ${formatTime(timerValue)}` : `Time elapsed: ${formatTime(timerValue)}`
-            )
-          ),
-          !isTestRunning && !questions.length && !loading && createElement('div', null,
-            createElement('div', { className: 'mb-4' },
-              createElement('label', { className: 'block text-gray-700 font-bold mb-2' }, 'Level:'),
-              createElement('select', {
-                value: testConfig.level,
-                onChange: handleLevelChange,
-                className: 'w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500'
-              },
-                levels.map(l => createElement('option', { key: l, value: l }, l))
-              )
-            ),
-            testConfig.level === 'IELTS' && createElement('div', { className: 'mb-4' },
-                createElement('label', { className: 'block text-gray-700 font-bold mb-2' }, 'IELTS Type:'),
-                createElement('select', {
-                    value: testConfig.ieltsType,
-                    onChange: (e) => setTestConfig({ ...testConfig, ieltsType: e.target.value }),
-                    className: 'w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500'
-                },
-                    createElement('option', { value: 'Academic' }, 'Academic'),
-                    createElement('option', { value: 'General' }, 'General')
-                )
-            ),
-            testConfig.level === 'TOEIC' && createElement('div', { className: 'mb-4' },
-                createElement('label', { className: 'block text-gray-700 font-bold mb-2' }, 'Select TOEIC Part:'),
-                createElement('select', {
-                    value: testConfig.toeicPart,
-                    onChange: handleToeicPartChange,
-                    className: 'w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500'
-                },
-                    toeicParts.map(p => createElement('option', { key: p, value: p }, p))
-                )
-            ),
-            createElement('div', { className: 'mb-4' },
-              createElement('label', { className: 'block text-gray-700 font-bold mb-2' }, 'Topic:'),
-              createElement('select', {
-                value: testConfig.topic,
-                onChange: (e) => setTestConfig({ ...testConfig, topic: e.target.value }),
-                className: `w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 ${isExamLevel ? 'bg-gray-200' : ''}`
-              },
-                createElement('option', { value: '' }, 'Select a topic...'),
-                allTopics.map(t => createElement('option', { key: t, value: t }, t))
-              ),
-              !isExamLevel && createElement('input', {
-                type: 'text',
-                placeholder: 'Or enter your own topic...',
-                value: testConfig.topic,
-                onChange: (e) => setTestConfig({ ...testConfig, topic: e.target.value }),
-                className: 'mt-2 w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500'
-              })
-            ),
-            createElement('div', { className: 'mb-6 grid grid-cols-2 gap-4' },
-                createElement('div', null,
-                    createElement('label', { className: `block text-gray-700 font-bold mb-2 ${isExamLevel ? 'opacity-50' : ''}` }, 'Number of Questions:'),
-                    createElement('input', {
-                        type: 'number',
-                        value: testConfig.numQuestions,
-                        onChange: (e) => setTestConfig({ ...testConfig, numQuestions: parseInt(e.target.value) }),
-                        min: 1,
-                        max: 40,
-                        disabled: isExamLevel,
-                        className: 'w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-200'
-                    }),
-                    isExamLevel && createElement('p', { className: 'text-sm text-gray-500 mt-1' }, `Fixed number of questions for ${testConfig.level}: ${testConfig.numQuestions} questions.`)
-                ),
-                createElement('div', null,
-                    createElement('label', { className: 'block text-gray-700 font-bold mb-2' }, 'Time (minutes):'),
-                    createElement('input', {
-                        type: 'number',
-                        value: testConfig.timeLimit > 0 ? testConfig.timeLimit : '',
-                        onChange: (e) => setTestConfig({ ...testConfig, timeLimit: parseInt(e.target.value) || 0 }),
-                        min: 0,
-                        disabled: testConfig.level === 'IELTS',
-                        className: 'w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-200'
-                    }),
-                    testConfig.level === 'IELTS' && createElement('p', { className: 'text-sm text-gray-500 mt-1' }, `Fixed time for IELTS: ${testConfig.timeLimit} minutes.`)
-                )
-            ),
-            createElement('div', { className: 'text-right' },
-              createElement('button', {
-                onClick: testConfig.level === 'IELTS' ? handleStartIELTSReading : handleStartRegularTest,
-                disabled: (testConfig.level !== 'TOEIC' && testConfig.level !== 'IELTS' && !testConfig.topic) || loading || (testConfig.level === 'TOEIC' && !testConfig.toeicPart),
-                className: 'px-6 py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-md hover:bg-indigo-700 transition duration-300 disabled:opacity-50'
-              }, loading ? 'Creating test...' : 'Create Test')
-            )
-          ),
-          isTestRunning && questions.length > 0 && !showResults && createElement('div', null,
+          createElement('div', { className: 'text-right text-sm text-gray-500 mb-2' }, `Time elapsed: ${formatTime(timerValue)}`),
+          !showResults ? (
+            createElement('form', { onSubmit: (e) => { e.preventDefault(); handleSubmitTest(); } },
               questions.map((q, qIndex) => (
-                  createElement('div', { key: q.id, className: 'mb-6 p-4 bg-gray-50 rounded-lg shadow-sm' },
-                      createElement('p', { className: 'font-semibold text-gray-800 mb-2' }, `${qIndex + 1}. ${q.questionText}`),
-                      createElement('div', { className: 'space-y-2' },
-                          q.options.map((option, oIndex) => (
-                              createElement('label', { key: oIndex, className: 'flex items-center text-gray-700' },
-                                  createElement('input', {
-                                      type: 'radio',
-                                      name: `q-${q.id}`,
-                                      value: option,
-                                      checked: userAnswers[q.id] === option,
-                                      onChange: (e) => handleAnswerChange(q.id, e.target.value),
-                                      className: 'mr-2'
-                                  }),
-                                  createElement('span', null, option)
-                              )
-                          ))
-                      )
-                  )
+                createElement('div', { key: qIndex, className: 'mb-6 p-4 bg-gray-50 rounded-xl shadow-sm' },
+                  createElement('p', { className: 'font-bold text-lg text-gray-800 mb-2' }, `${qIndex + 1}. ${q.questionText}`),
+                  q.options.map((option, oIndex) => (
+                    createElement('label', { key: oIndex, className: 'flex items-center space-x-2 mb-1 cursor-pointer hover:bg-gray-100 p-2 rounded-lg' },
+                      createElement('input', {
+                        type: 'radio',
+                        name: `question-${qIndex}`,
+                        value: option,
+                        checked: userAnswers[qIndex] === option,
+                        onChange: (e) => handleChangeAnswer(e, qIndex),
+                        className: 'form-radio text-blue-600'
+                      }),
+                      createElement('span', { className: 'text-gray-700' }, option)
+                    )
+                  ))
+                )
               )),
-              createElement('div', { className: 'mt-6 text-right' },
-                  createElement('button', {
-                      onClick: handleSubmitTest,
-                      className: 'px-6 py-3 bg-green-600 text-white font-bold rounded-xl shadow-md hover:bg-green-700 transition duration-300',
-                  }, 'Submit Test')
-              )
-          ),
-          loading && createElement('div', { className: 'flex items-center justify-center p-8 text-lg text-gray-500' }, 'Generating questions...'),
-
-          // Display results after test submission
-          showResults && createElement('div', null,
-            createElement('h3', { className: 'text-3xl font-bold text-center mb-4' }, `Your Score: ${score}/${questions.length}`),
-            createElement('div', { className: 'space-y-4' },
+              createElement('button', {
+                type: 'submit',
+                className: 'w-full px-6 py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-md hover:bg-indigo-700 transition duration-300'
+              }, 'Submit Test')
+            )
+          ) : (
+            createElement('div', null,
+              createElement('h4', { className: 'text-3xl font-bold text-center mb-4' }, `Your Score: ${scoreTest()} / ${questions.length}`),
               questions.map((q, qIndex) => (
-                createElement('div', { key: q.id, className: 'p-4 rounded-lg shadow-sm border', style: { borderColor: userAnswers[q.id]?.toLowerCase() === q.correctAnswer?.toLowerCase() ? '#10B981' : '#EF4444' } },
-                  createElement('p', { className: 'font-semibold mb-2', style: { color: userAnswers[q.id]?.toLowerCase() === q.correctAnswer?.toLowerCase() ? '#059669' : '#DC2626' } },
-                    `${qIndex + 1}. ${q.questionText}`
+                createElement('div', { key: qIndex, className: `mb-4 p-4 rounded-xl ${userAnswers[qIndex] === q.correctAnswer ? 'bg-green-100' : 'bg-red-100'}` },
+                  createElement('p', { className: 'font-bold text-lg' }, `${qIndex + 1}. ${q.questionText}`),
+                  createElement('p', { className: 'mt-2' },
+                    createElement('span', { className: 'font-bold' }, 'Your Answer: '),
+                    createElement('span', { className: userAnswers[qIndex] === q.correctAnswer ? 'text-green-700' : 'text-red-700' }, userAnswers[qIndex] || 'No answer')
                   ),
-                  createElement('p', { className: 'text-gray-700' }, `Your answer: ${userAnswers[q.id] || 'Not answered'}`),
-                  userAnswers[q.id]?.toLowerCase() !== q.correctAnswer?.toLowerCase() && createElement('p', { className: 'text-gray-700' }, `Correct answer: ${q.correctAnswer}`)
+                  createElement('p', null,
+                    createElement('span', { className: 'font-bold' }, 'Correct Answer: '),
+                    createElement('span', { className: 'text-green-700' }, q.correctAnswer)
+                  )
                 )
               ))
-            ),
-            incorrectAnswers.length > 0 && createElement('div', { className: 'mt-6 text-right' },
-              createElement('button', {
-                onClick: () => handleSaveIncorrectAnswers(incorrectAnswers),
-                className: 'px-6 py-3 bg-yellow-600 text-white font-bold rounded-xl shadow-md hover:bg-yellow-700 transition duration-300'
-              }, 'Save Incorrect Answers')
-            ),
-            createElement('div', { className: 'mt-6 text-right' },
-                createElement('button', {
-                  onClick: () => {
-                    setTestType(null);
-                    setQuestions([]);
-                    setUserAnswers({});
-                    setShowResults(false);
-                    setIsTestRunning(false);
-                    setTimerValue(0);
-                  },
-                  className: 'px-6 py-3 bg-gray-600 text-white font-bold rounded-xl shadow-md hover:bg-gray-700 transition duration-300'
-                }, 'Start New Test')
-              )
+            )
           )
         );
+      };
+
+      if (isTestRunning) {
+        if (testType === 'writing') return createElement(WritingTest, null);
+        if (testType === 'multiple-choice') return createElement(MultipleChoiceTest, null);
       }
 
-      // Writing test UI
-      if (testType === 'writing') {
-        return createElement('div', null,
-          createElement('h2', { className: 'text-4xl font-bold text-gray-800 mb-6 text-center' }, 'Essay Writing'),
-          createElement('div', { className: 'flex justify-between items-center mb-4' },
-            writingTopic && createElement('p', { className: 'text-lg font-semibold text-gray-700' }, `Topic: ${writingTopic}`),
-            createElement('button', {
-              onClick: handleGenerateWritingTopic,
-              className: 'px-4 py-2 bg-purple-600 text-white font-bold rounded-full shadow-md hover:bg-purple-700 transition duration-300 disabled:opacity-50',
-              disabled: loading
-            }, loading ? 'Generating...' : 'Generate a random topic ✨')
-          ),
-          createElement('textarea', {
-            value: writingText,
-            onChange: (e) => setWritingText(e.target.value),
-            className: 'w-full p-4 text-lg rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500',
-            rows: '15',
-            placeholder: 'Write your essay here...'
-          }),
-          createElement('div', { className: 'mt-6 text-right space-x-2' },
-            createElement('button', {
-              onClick: handleGetWritingFeedback,
-              className: 'px-6 py-3 bg-green-600 text-white font-bold rounded-xl shadow-md hover:bg-green-700 transition duration-300 disabled:opacity-50',
-              disabled: !writingText.trim() || loading
-            }, loading ? 'Analyzing...' : 'Get Feedback ✨'),
-            writingFeedback && createElement('button', {
-              onClick: handleSaveWritingFeedback,
-              className: 'px-6 py-3 bg-blue-600 text-white font-bold rounded-xl shadow-md hover:bg-blue-700 transition duration-300'
-            }, 'Save feedback to library')
-          ),
-          writingFeedback && createElement('div', { className: 'mt-8 bg-gray-50 p-6 rounded-xl shadow-inner border border-gray-200' },
-            createElement('h3', { className: 'text-2xl font-bold text-gray-800 mb-4' }, 'Detailed Feedback:'),
-            createElement('p', { className: 'whitespace-pre-wrap text-gray-700' }, writingFeedback)
-          ),
-          createElement('div', { className: 'mt-6 text-right' },
-              createElement('button', {
-                onClick: () => {
-                  setTestType(null);
-                  setWritingText('');
-                  setWritingFeedback(null);
-                  setWritingTopic('');
-                },
-                className: 'px-6 py-3 bg-gray-600 text-white font-bold rounded-xl shadow-md hover:bg-gray-700 transition duration-300'
-              }, 'Start New Test')
-            )
-        );
-      }
+      return createElement('div', null,
+        createElement('h2', { className: 'text-4xl font-bold text-gray-800 mb-6 text-center' }, 'Test Your Knowledge'),
+        !testType && createElement(TestSetup, null),
+        (testType === 'multiple-choice' && questions.length === 0 && !loading) && createElement('p', { className: 'text-center text-gray-500 mt-4' }, "No questions generated yet. Please configure and start a test.")
+      );
     };
 
-    // Lessons page component for creating and saving new lessons with rich text editing.
+    // New Lessons component for creating and saving rich text content
     const Lessons = ({ onSaveLesson }) => {
       const [title, setTitle] = useState('');
       const [content, setContent] = useState('');
-      const editorRef = useRef(null);
+      const [isGenerating, setIsGenerating] = useState(false);
+      const contentRef = useRef(null);
+      
+      // Function to apply text formatting
+      const applyFormat = (command) => {
+        document.execCommand(command, false, null);
+        contentRef.current.focus();
+      };
+      
+      const handleGenerateContent = async () => {
+        if (!title || isGenerating) return;
+        setIsGenerating(true);
+        const prompt = `Generate a comprehensive English lesson on the topic of "${title}". The lesson should include an introduction, key vocabulary with definitions and example sentences, and a short text or dialogue. The content should be suitable for intermediate learners and formatted with headings, bold text for key terms, and bullet points.`;
+        
+        const callback = (generatedContent) => {
+          // Replace generated Markdown with appropriate HTML tags
+          const formattedContent = generatedContent
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/^- (.*)/gm, '<li>$1</li>')
+            .replace(/^(#+)\s*(.*)/gm, (match, p1, p2) => {
+              const tag = `h${p1.length}`;
+              return `<${tag}>${p2}</${tag}>`;
+            });
+          setContent(formattedContent);
+        };
+        
+        const callGeminiApi = async (userPrompt, callback, onLoading, responseSchema = null, model = 'gemini-2.5-flash-preview-05-20') => {
+          onLoading(true);
+          let retries = 0;
+          const maxRetries = 5;
+          const baseDelay = 1000;
+          const apiKey = "DÁN KHÓA API CỦA BẠN VÀO ĐÂY";
 
-      useEffect(() => {
-        const savedContent = localStorage.getItem('currentLessonContent');
-        if (savedContent) {
-          try {
-            const { savedTitle, savedContentText } = JSON.parse(savedContent);
-            setTitle(savedTitle);
-            if (editorRef.current) {
-              editorRef.current.innerHTML = savedContentText;
-            }
-          } catch (e) {
-            console.error("Failed to parse saved lesson content", e);
+          if (!apiKey || apiKey === "DÁN KHÓA API CỦA BẠN VÀO ĐÂY") {
+            console.error("Lỗi: Không tìm thấy khóa API. Vui lòng thêm khóa API của bạn.");
+            onLoading(false);
+            return;
           }
-        }
-      }, []);
 
-      useEffect(() => {
-        const interval = setInterval(() => {
-            if (editorRef.current) {
-                localStorage.setItem('currentLessonContent', JSON.stringify({ savedTitle: title, savedContentText: editorRef.current.innerHTML }));
+          while (retries < maxRetries) {
+            try {
+              const chatHistory = [{ role: "user", parts: [{ text: userPrompt }] }];
+              const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+              
+              const payload = { contents: chatHistory };
+              if (responseSchema) {
+                payload.generationConfig = { responseMimeType: "application/json", responseSchema };
+              }
+              const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+              });
+
+              if (!response.ok) {
+                throw new Error(`API call failed with status: ${response.status}`);
+              }
+
+              const result = await response.json();
+              
+              if (result.candidates && result.candidates.length > 0 &&
+                result.candidates[0].content && result.candidates[0].content.parts &&
+                result.candidates[0].content.parts.length > 0) {
+                const content = result.candidates[0].content.parts[0].text;
+                callback(content);
+                break;
+              } else {
+                throw new Error("Không nhận được nội dung hợp lệ từ API.");
+              }
+            } catch (e) {
+              console.error("Lỗi khi gọi API:", e);
+              retries++;
+              if (retries < maxRetries) {
+                const delay = baseDelay * (2 ** (retries - 1));
+                console.log(`Retrying in ${delay}ms...`);
+                await new Promise(res => setTimeout(res, delay));
+              }
+            } finally {
+              onLoading(false);
             }
-        }, 1000); // Save content to localStorage every second
-        return () => clearInterval(interval);
-      }, [title]);
+          }
+        };
 
-      const handleSave = () => {
-        onSaveLesson(title, editorRef.current.innerHTML);
-        setTitle('');
-        if (editorRef.current) {
-          editorRef.current.innerHTML = '';
-        }
-        localStorage.removeItem('currentLessonContent');
+        callGeminiApi(prompt, callback, setIsGenerating);
       };
-
-      const handleFormatting = (command, value = null) => {
-        document.execCommand(command, false, value);
-        editorRef.current.focus();
-      };
-
-      const handleHighlight = () => {
-        // Use a color for the highlight
-        handleFormatting('hiliteColor', '#fcd34d'); // Tailwind's yellow-300
-      };
-
-      return createElement('div', { className: 'flex flex-col h-full' },
-        createElement('h2', { className: 'text-4xl font-bold text-gray-800 mb-6 text-center' }, 'Create a New Lesson'),
-        createElement('input', {
-          type: 'text',
-          placeholder: 'Lesson Title...',
-          value: title,
-          onChange: (e) => setTitle(e.target.value),
-          className: 'w-full p-4 mb-4 text-xl rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500'
-        }),
-        // New Rich Text Editor Toolbar
-        createElement('div', { className: 'flex space-x-2 p-2 bg-gray-100 rounded-t-xl border-t border-x border-gray-300' },
+      
+      return createElement('div', { className: 'space-y-6' },
+        createElement('h2', { className: 'text-4xl font-bold text-gray-800 text-center' }, 'Create a New Lesson'),
+        createElement('div', { className: 'flex items-center space-x-4' },
+          createElement('input', {
+            type: 'text',
+            placeholder: 'Enter lesson title (e.g., Present Simple Tense)',
+            value: title,
+            onChange: (e) => setTitle(e.target.value),
+            className: 'flex-grow p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500'
+          }),
           createElement('button', {
-            onClick: () => handleFormatting('bold'),
-            className: 'px-3 py-2 text-gray-700 hover:bg-gray-200 rounded-md transition-colors'
-          }, createElement('i', { className: 'fas fa-bold' })),
-          createElement('button', {
-            onClick: () => handleFormatting('italic'),
-            className: 'px-3 py-2 text-gray-700 hover:bg-gray-200 rounded-md transition-colors'
-          }, createElement('i', { className: 'fas fa-italic' })),
-          createElement('button', {
-            onClick: () => handleFormatting('underline'),
-            className: 'px-3 py-2 text-gray-700 hover:bg-gray-200 rounded-md transition-colors'
-          }, createElement('i', { className: 'fas fa-underline' })),
-          createElement('button', {
-            onClick: handleHighlight,
-            className: 'px-3 py-2 text-gray-700 hover:bg-gray-200 rounded-md transition-colors'
-          }, createElement('i', { className: 'fas fa-highlighter' }))
+            onClick: handleGenerateContent,
+            disabled: !title || isGenerating,
+            className: 'px-6 py-3 bg-purple-600 text-white font-bold rounded-xl shadow-md hover:bg-purple-700 transition duration-300 disabled:opacity-50'
+          }, isGenerating ? 'Generating...' : 'Generate Content')
         ),
-        // New contenteditable div for rich text
-        createElement('div', {
-          ref: editorRef,
-          contentEditable: true,
-          className: 'flex-grow w-full p-4 text-lg bg-white rounded-b-xl border-x border-b border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 h-96 overflow-y-auto'
-        }),
-        createElement('div', { className: 'mt-6 text-right' },
+        
+        createElement('div', { className: 'bg-white p-6 rounded-xl shadow-lg' },
+          createElement('div', { className: 'flex items-center space-x-2 mb-4 p-2 bg-gray-100 rounded-md' },
+            createElement('button', { onClick: () => applyFormat('bold'), className: 'p-1 text-gray-600 hover:text-gray-900 font-bold' }, 'B'),
+            createElement('button', { onClick: () => applyFormat('italic'), className: 'p-1 text-gray-600 hover:text-gray-900 italic' }, 'I'),
+            createElement('button', { onClick: () => applyFormat('underline'), className: 'p-1 text-gray-600 hover:text-gray-900 underline' }, 'U')
+          ),
+          createElement('div', {
+            ref: contentRef,
+            contentEditable: true,
+            className: 'editor-container p-4 min-h-[400px] bg-white text-gray-800'
+          })
+        ),
+        
+        createElement('div', { className: 'text-right' },
           createElement('button', {
-            onClick: handleSave,
-            className: 'px-6 py-3 bg-blue-600 text-white font-bold rounded-xl shadow-md hover:bg-blue-700 transition duration-300'
+            onClick: () => onSaveLesson(title, contentRef.current.innerHTML),
+            className: 'px-6 py-3 bg-green-600 text-white font-bold rounded-xl shadow-md hover:bg-green-700 transition duration-300 disabled:opacity-50',
+            disabled: !title || !contentRef.current || !contentRef.current.innerHTML
           }, 'Save Lesson')
         )
       );
     };
 
-    // Flashcards page component with AI generation.
+    // New Flashcards component
     const Flashcards = ({ onSaveFlashcard }) => {
       const [word, setWord] = useState('');
       const [meaning, setMeaning] = useState('');
       const [example, setExample] = useState('');
       const [imageUrl, setImageUrl] = useState('');
       const [loading, setLoading] = useState(false);
-
-      const generateWithAI = async () => {
-        if (!word || !meaning) {
-          return;
-        }
+      
+      const handleGenerateContent = async () => {
+        if (!word || loading) return;
         setLoading(true);
-        setExample('');
-        setImageUrl('');
-
-        try {
-          const promptExample = `Create an example sentence in English using the word "${word}" which means "${meaning}".`;
-          const payloadExample = { contents: [{ role: "user", parts: [{ text: promptExample }] }] };
-          const apiKey = "";
-          const apiUrlExample = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-
-          const responseExample = await fetch(apiUrlExample, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payloadExample)
-          });
-          const resultExample = await responseExample.json();
-          const generatedExample = resultExample?.candidates?.[0]?.content?.parts?.[0]?.text;
-          setExample(generatedExample || 'Unable to generate an example sentence.');
-
-          const promptImage = `Create an illustrative image for the word "${word}" which means "${meaning}".`;
-          const payloadImage = { instances: { prompt: promptImage }, parameters: { "sampleCount": 1 } };
-          const apiUrlImage = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
-
-          const responseImage = await fetch(apiUrlImage, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payloadImage)
-          });
-          const resultImage = await responseImage.json();
-          const base64Data = resultImage?.predictions?.[0]?.bytesBase64Encoded;
-          if (base64Data) {
-            setImageUrl(`data:image/png;base64,${base64Data}`);
-          } else {
-            setImageUrl('https://placehold.co/250x250/E0E0E0/808080?text=No+Image');
+        
+        const prompt = `Provide the definition, an example sentence, and generate a small, illustrative image for the word "${word}". Return the response as a JSON object with 'meaning', 'example', and 'imageUrl'. The image URL should be a placeholder image URL, for example: 'https://placehold.co/150x150/f0f0f0/333333?text=Placeholder'`;
+        
+        const responseSchema = {
+          type: "OBJECT",
+          properties: {
+            "meaning": { "type": "STRING" },
+            "example": { "type": "STRING" },
+            "imageUrl": { "type": "STRING" }
+          },
+          "propertyOrdering": ["meaning", "example", "imageUrl"]
+        };
+        
+        const callback = (content) => {
+          try {
+            const parsedContent = JSON.parse(content);
+            setMeaning(parsedContent.meaning);
+            setExample(parsedContent.example);
+            setImageUrl(parsedContent.imageUrl);
+          } catch (e) {
+            console.error("Failed to parse JSON response:", e);
+            alert("Failed to generate content. Please try again.");
           }
-        } catch (error) {
-          console.error("Error calling API:", error);
-          setExample("An error occurred while creating an example.");
-          setImageUrl('https://placehold.co/250x250/E0E0E0/808080?text=Image+Error');
-        } finally {
-          setLoading(false);
+        };
+
+        const callGeminiApi = async (userPrompt, callback, onLoading, responseSchema = null, model = 'gemini-2.5-flash-preview-05-20') => {
+          onLoading(true);
+          let retries = 0;
+          const maxRetries = 5;
+          const baseDelay = 1000;
+          const apiKey = "DÁN KHÓA API CỦA BẠN VÀO ĐÂY";
+
+          if (!apiKey || apiKey === "AIzaSyC20sIyIo96gexn-C9vnROtWNUPsG3HuFE") {
+            console.error("Lỗi: Không tìm thấy khóa API. Vui lòng thêm khóa API của bạn.");
+            onLoading(false);
+            return;
+          }
+
+          while (retries < maxRetries) {
+            try {
+              const chatHistory = [{ role: "user", parts: [{ text: userPrompt }] }];
+              const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+              
+              const payload = { contents: chatHistory };
+              if (responseSchema) {
+                payload.generationConfig = { responseMimeType: "application/json", responseSchema };
+              }
+              const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+              });
+
+              if (!response.ok) {
+                throw new Error(`API call failed with status: ${response.status}`);
+              }
+
+              const result = await response.json();
+              
+              if (result.candidates && result.candidates.length > 0 &&
+                result.candidates[0].content && result.candidates[0].content.parts &&
+                result.candidates[0].content.parts.length > 0) {
+                const content = result.candidates[0].content.parts[0].text;
+                callback(content);
+                break;
+              } else {
+                throw new Error("Không nhận được nội dung hợp lệ từ API.");
+              }
+            } catch (e) {
+              console.error("Lỗi khi gọi API:", e);
+              retries++;
+              if (retries < maxRetries) {
+                const delay = baseDelay * (2 ** (retries - 1));
+                console.log(`Retrying in ${delay}ms...`);
+                await new Promise(res => setTimeout(res, delay));
+              }
+            } finally {
+              onLoading(false);
+            }
+          }
+        };
+
+        callGeminiApi(prompt, callback, setLoading, responseSchema);
+      };
+      
+      const handleSave = () => {
+        if (word && meaning) {
+          onSaveFlashcard(word, meaning, example, imageUrl);
+          setWord('');
+          setMeaning('');
+          setExample('');
+          setImageUrl('');
         }
       };
 
-      const handleSave = () => {
-        onSaveFlashcard(word, meaning, example, imageUrl);
-        setWord('');
-        setMeaning('');
-        setExample('');
-        setImageUrl('');
-      };
-
-      return createElement('div', null,
-        createElement('h2', { className: 'text-4xl font-bold text-gray-800 mb-6 text-center' }, 'Create Flashcards'),
-        createElement('p', { className: 'text-lg text-gray-600 mb-4 text-center' }, 'Add a word and use AI to generate an example and an image.'),
-        createElement('div', { className: 'grid md:grid-cols-2 gap-6' },
-          createElement('div', { className: 'col-span-1 space-y-4' },
-            createElement('input', {
-              type: 'text',
-              placeholder: 'Word...',
-              value: word,
-              onChange: (e) => setWord(e.target.value),
-              className: 'w-full p-4 text-lg rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500'
-            }),
-            createElement('input', {
-              type: 'text',
-              placeholder: 'Meaning...',
-              value: meaning,
-              onChange: (e) => setMeaning(e.target.value),
-              className: 'w-full p-4 text-lg rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500'
-            }),
-            createElement('div', { className: 'text-right' },
-              createElement('button', {
-                onClick: generateWithAI,
-                className: 'px-6 py-3 bg-purple-600 text-white font-bold rounded-xl shadow-md hover:bg-purple-700 transition duration-300 disabled:opacity-50',
-                disabled: !word || !meaning || loading
-              }, loading ? 'Generating...' : 'Generate with AI ✨')
-            )
-          ),
-          createElement('div', { className: 'col-span-1' },
+      return createElement('div', { className: 'space-y-6' },
+        createElement('h2', { className: 'text-4xl font-bold text-gray-800 text-center' }, 'Create New Flashcard'),
+        createElement('div', { className: 'flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-4' },
+          createElement('input', {
+            type: 'text',
+            placeholder: 'Enter a word (e.g., Serendipity)',
+            value: word,
+            onChange: (e) => setWord(e.target.value),
+            className: 'flex-grow p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500'
+          }),
+          createElement('button', {
+            onClick: handleGenerateContent,
+            disabled: !word || loading,
+            className: 'px-6 py-3 bg-blue-600 text-white font-bold rounded-xl shadow-md hover:bg-blue-700 transition duration-300 disabled:opacity-50'
+          }, loading ? 'Generating...' : 'Generate Content')
+        ),
+        
+        createElement('div', { className: 'mt-6 bg-white p-6 rounded-xl shadow-lg' },
+          createElement('div', { className: 'text-center' },
             loading ? (
               createElement('div', { className: 'flex items-center justify-center h-full text-lg text-gray-500' }, 'Generating content...')
             ) : (
@@ -1284,7 +1040,8 @@
                 createElement('div', { className: 'w-64 h-64 mb-4 rounded-lg overflow-hidden border border-gray-200' },
                   imageUrl ? createElement('img', { src: imageUrl, alt: 'Illustrative image', className: 'w-full h-full object-cover' }) : createElement('div', { className: 'w-full h-full bg-gray-200 flex items-center justify-center text-gray-500' }, 'Image will appear here')
                 ),
-                createElement('p', { className: 'text-lg text-gray-700 text-center' }, example || 'An example sentence will appear here.')
+                createElement('p', { className: 'text-lg text-gray-700 text-center' }, meaning || 'Meaning will appear here.'),
+                createElement('p', { className: 'text-gray-500 italic text-center' }, example || 'An example sentence will appear here.')
               )
             )
           )
@@ -1292,7 +1049,7 @@
         createElement('div', { className: 'mt-6 text-right' },
           createElement('button', {
             onClick: handleSave,
-            className: 'px-6 py-3 bg-blue-600 text-white font-bold rounded-xl shadow-md hover:bg-blue-700 transition duration-300 disabled:opacity-50',
+            className: 'px-6 py-3 bg-green-600 text-white font-bold rounded-xl shadow-md hover:bg-green-700 transition duration-300 disabled:opacity-50',
             disabled: !word || !meaning || loading
           }, 'Save Flashcard')
         )
@@ -1303,7 +1060,7 @@
       const rootElement = document.getElementById('root');
       if (rootElement) {
         const root = createRoot(rootElement);
-        root.render(createElement(App, null));
+        root.render(createElement(App));
       }
     };
   </script>
